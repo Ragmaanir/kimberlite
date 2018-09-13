@@ -11,7 +11,7 @@ license: MIT
 development_dependencies:
   ameba:
     github: veelenga/ameba
-    version: 0.7.0
+    version: 0.8.0
   microtest:
     github: ragmaanir/microtest
     branch: master
