@@ -29,14 +29,49 @@ lib Vulkan
   alias DescriptorSetT = Void
   alias FramebufferT = Void
   alias CommandPoolT = Void
-  struct ApplicationInfo
-    s_type : StructureType
-    p_next : Void*
-    p_application_name : LibC::Char*
-    application_version : Uint32T
-    p_engine_name : LibC::Char*
-    engine_version : Uint32T
-    api_version : Uint32T
+  enum PipelineCacheHeaderVersion
+    VkPipelineCacheHeaderVersionOne = 1
+    VkPipelineCacheHeaderVersionBeginRange = 1
+    VkPipelineCacheHeaderVersionEndRange = 1
+    VkPipelineCacheHeaderVersionRangeSize = 1
+    VkPipelineCacheHeaderVersionMaxEnum = 2147483647
+  end
+  enum Result
+    VkSuccess = 0
+    VkNotReady = 1
+    VkTimeout = 2
+    VkEventSet = 3
+    VkEventReset = 4
+    VkIncomplete = 5
+    VkErrorOutOfHostMemory = -1
+    VkErrorOutOfDeviceMemory = -2
+    VkErrorInitializationFailed = -3
+    VkErrorDeviceLost = -4
+    VkErrorMemoryMapFailed = -5
+    VkErrorLayerNotPresent = -6
+    VkErrorExtensionNotPresent = -7
+    VkErrorFeatureNotPresent = -8
+    VkErrorIncompatibleDriver = -9
+    VkErrorTooManyObjects = -10
+    VkErrorFormatNotSupported = -11
+    VkErrorFragmentedPool = -12
+    VkErrorOutOfPoolMemory = -1000069000
+    VkErrorInvalidExternalHandle = -1000072003
+    VkErrorSurfaceLostKhr = -1000000000
+    VkErrorNativeWindowInUseKhr = -1000000001
+    VkSuboptimalKhr = 1000001003
+    VkErrorOutOfDateKhr = -1000001004
+    VkErrorIncompatibleDisplayKhr = -1000003001
+    VkErrorValidationFailedExt = -1000011001
+    VkErrorInvalidShaderNv = -1000012000
+    VkErrorFragmentationExt = -1000161000
+    VkErrorNotPermittedExt = -1000174001
+    VkErrorOutOfPoolMemoryKhr = -1000069000
+    VkErrorInvalidExternalHandleKhr = -1000072003
+    VkResultBeginRange = -12
+    VkResultEndRange = 5
+    VkResultRangeSize = 18
+    VkResultMaxEnum = 2147483647
   end
   enum StructureType
     VkStructureTypeApplicationInfo = 0
@@ -353,28 +388,6 @@ lib Vulkan
     VkStructureTypeRangeSize = 49
     VkStructureTypeMaxEnum = 2147483647
   end
-  alias X__Uint32T = LibC::UInt
-  alias Uint32T = X__Uint32T
-  struct InstanceCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : InstanceCreateFlags
-    p_application_info : ApplicationInfo*
-    enabled_layer_count : Uint32T
-    pp_enabled_layer_names : LibC::Char**
-    enabled_extension_count : Uint32T
-    pp_enabled_extension_names : LibC::Char**
-  end
-  alias Flags = Uint32T
-  alias InstanceCreateFlags = Flags
-  struct AllocationCallbacks
-    p_user_data : Void*
-    pfn_allocation : PfnVkAllocationFunction
-    pfn_reallocation : PfnVkReallocationFunction
-    pfn_free : PfnVkFreeFunction
-    pfn_internal_allocation : PfnVkInternalAllocationNotification
-    pfn_internal_free : PfnVkInternalFreeNotification
-  end
   enum SystemAllocationScope
     VkSystemAllocationScopeCommand = 0
     VkSystemAllocationScopeObject = 1
@@ -386,9 +399,6 @@ lib Vulkan
     VkSystemAllocationScopeRangeSize = 5
     VkSystemAllocationScopeMaxEnum = 2147483647
   end
-  alias PfnVkAllocationFunction = (Void*, LibC::SizeT, LibC::SizeT, SystemAllocationScope -> Void*)
-  alias PfnVkReallocationFunction = (Void*, Void*, LibC::SizeT, LibC::SizeT, SystemAllocationScope -> Void*)
-  alias PfnVkFreeFunction = (Void*, Void* -> Void)
   enum InternalAllocationType
     VkInternalAllocationTypeExecutable = 0
     VkInternalAllocationTypeBeginRange = 0
@@ -396,455 +406,6 @@ lib Vulkan
     VkInternalAllocationTypeRangeSize = 1
     VkInternalAllocationTypeMaxEnum = 2147483647
   end
-  alias PfnVkInternalAllocationNotification = (Void*, LibC::SizeT, InternalAllocationType, SystemAllocationScope -> Void)
-  alias PfnVkInternalFreeNotification = (Void*, LibC::SizeT, InternalAllocationType, SystemAllocationScope -> Void)
-  struct PhysicalDeviceFeatures
-    robust_buffer_access : Bool32
-    full_draw_index_uint32 : Bool32
-    image_cube_array : Bool32
-    independent_blend : Bool32
-    geometry_shader : Bool32
-    tessellation_shader : Bool32
-    sample_rate_shading : Bool32
-    dual_src_blend : Bool32
-    logic_op : Bool32
-    multi_draw_indirect : Bool32
-    draw_indirect_first_instance : Bool32
-    depth_clamp : Bool32
-    depth_bias_clamp : Bool32
-    fill_mode_non_solid : Bool32
-    depth_bounds : Bool32
-    wide_lines : Bool32
-    large_points : Bool32
-    alpha_to_one : Bool32
-    multi_viewport : Bool32
-    sampler_anisotropy : Bool32
-    texture_compression_etc2 : Bool32
-    texture_compression_astc_ldr : Bool32
-    texture_compression_bc : Bool32
-    occlusion_query_precise : Bool32
-    pipeline_statistics_query : Bool32
-    vertex_pipeline_stores_and_atomics : Bool32
-    fragment_stores_and_atomics : Bool32
-    shader_tessellation_and_geometry_point_size : Bool32
-    shader_image_gather_extended : Bool32
-    shader_storage_image_extended_formats : Bool32
-    shader_storage_image_multisample : Bool32
-    shader_storage_image_read_without_format : Bool32
-    shader_storage_image_write_without_format : Bool32
-    shader_uniform_buffer_array_dynamic_indexing : Bool32
-    shader_sampled_image_array_dynamic_indexing : Bool32
-    shader_storage_buffer_array_dynamic_indexing : Bool32
-    shader_storage_image_array_dynamic_indexing : Bool32
-    shader_clip_distance : Bool32
-    shader_cull_distance : Bool32
-    shader_float64 : Bool32
-    shader_int64 : Bool32
-    shader_int16 : Bool32
-    shader_resource_residency : Bool32
-    shader_resource_min_lod : Bool32
-    sparse_binding : Bool32
-    sparse_residency_buffer : Bool32
-    sparse_residency_image_2d : Bool32
-    sparse_residency_image_3d : Bool32
-    sparse_residency_2_samples : Bool32
-    sparse_residency_4_samples : Bool32
-    sparse_residency_8_samples : Bool32
-    sparse_residency_16_samples : Bool32
-    sparse_residency_aliased : Bool32
-    variable_multisample_rate : Bool32
-    inherited_queries : Bool32
-  end
-  alias Bool32 = Uint32T
-  struct FormatProperties
-    linear_tiling_features : FormatFeatureFlags
-    optimal_tiling_features : FormatFeatureFlags
-    buffer_features : FormatFeatureFlags
-  end
-  alias FormatFeatureFlags = Flags
-  struct Extent3D
-    width : Uint32T
-    height : Uint32T
-    depth : Uint32T
-  end
-  struct ImageFormatProperties
-    max_extent : Extent3D
-    max_mip_levels : Uint32T
-    max_array_layers : Uint32T
-    sample_counts : SampleCountFlags
-    max_resource_size : DeviceSize
-  end
-  alias SampleCountFlags = Flags
-  alias X__Uint64T = LibC::ULong
-  alias Uint64T = X__Uint64T
-  alias DeviceSize = Uint64T
-  struct PhysicalDeviceLimits
-    max_image_dimension_1d : Uint32T
-    max_image_dimension_2d : Uint32T
-    max_image_dimension_3d : Uint32T
-    max_image_dimension_cube : Uint32T
-    max_image_array_layers : Uint32T
-    max_texel_buffer_elements : Uint32T
-    max_uniform_buffer_range : Uint32T
-    max_storage_buffer_range : Uint32T
-    max_push_constants_size : Uint32T
-    max_memory_allocation_count : Uint32T
-    max_sampler_allocation_count : Uint32T
-    buffer_image_granularity : DeviceSize
-    sparse_address_space_size : DeviceSize
-    max_bound_descriptor_sets : Uint32T
-    max_per_stage_descriptor_samplers : Uint32T
-    max_per_stage_descriptor_uniform_buffers : Uint32T
-    max_per_stage_descriptor_storage_buffers : Uint32T
-    max_per_stage_descriptor_sampled_images : Uint32T
-    max_per_stage_descriptor_storage_images : Uint32T
-    max_per_stage_descriptor_input_attachments : Uint32T
-    max_per_stage_resources : Uint32T
-    max_descriptor_set_samplers : Uint32T
-    max_descriptor_set_uniform_buffers : Uint32T
-    max_descriptor_set_uniform_buffers_dynamic : Uint32T
-    max_descriptor_set_storage_buffers : Uint32T
-    max_descriptor_set_storage_buffers_dynamic : Uint32T
-    max_descriptor_set_sampled_images : Uint32T
-    max_descriptor_set_storage_images : Uint32T
-    max_descriptor_set_input_attachments : Uint32T
-    max_vertex_input_attributes : Uint32T
-    max_vertex_input_bindings : Uint32T
-    max_vertex_input_attribute_offset : Uint32T
-    max_vertex_input_binding_stride : Uint32T
-    max_vertex_output_components : Uint32T
-    max_tessellation_generation_level : Uint32T
-    max_tessellation_patch_size : Uint32T
-    max_tessellation_control_per_vertex_input_components : Uint32T
-    max_tessellation_control_per_vertex_output_components : Uint32T
-    max_tessellation_control_per_patch_output_components : Uint32T
-    max_tessellation_control_total_output_components : Uint32T
-    max_tessellation_evaluation_input_components : Uint32T
-    max_tessellation_evaluation_output_components : Uint32T
-    max_geometry_shader_invocations : Uint32T
-    max_geometry_input_components : Uint32T
-    max_geometry_output_components : Uint32T
-    max_geometry_output_vertices : Uint32T
-    max_geometry_total_output_components : Uint32T
-    max_fragment_input_components : Uint32T
-    max_fragment_output_attachments : Uint32T
-    max_fragment_dual_src_attachments : Uint32T
-    max_fragment_combined_output_resources : Uint32T
-    max_compute_shared_memory_size : Uint32T
-    max_compute_work_group_count : Uint32T[3]
-    max_compute_work_group_invocations : Uint32T
-    max_compute_work_group_size : Uint32T[3]
-    sub_pixel_precision_bits : Uint32T
-    sub_texel_precision_bits : Uint32T
-    mipmap_precision_bits : Uint32T
-    max_draw_indexed_index_value : Uint32T
-    max_draw_indirect_count : Uint32T
-    max_sampler_lod_bias : LibC::Float
-    max_sampler_anisotropy : LibC::Float
-    max_viewports : Uint32T
-    max_viewport_dimensions : Uint32T[2]
-    viewport_bounds_range : LibC::Float[2]
-    viewport_sub_pixel_bits : Uint32T
-    min_memory_map_alignment : LibC::SizeT
-    min_texel_buffer_offset_alignment : DeviceSize
-    min_uniform_buffer_offset_alignment : DeviceSize
-    min_storage_buffer_offset_alignment : DeviceSize
-    min_texel_offset : Int32T
-    max_texel_offset : Uint32T
-    min_texel_gather_offset : Int32T
-    max_texel_gather_offset : Uint32T
-    min_interpolation_offset : LibC::Float
-    max_interpolation_offset : LibC::Float
-    sub_pixel_interpolation_offset_bits : Uint32T
-    max_framebuffer_width : Uint32T
-    max_framebuffer_height : Uint32T
-    max_framebuffer_layers : Uint32T
-    framebuffer_color_sample_counts : SampleCountFlags
-    framebuffer_depth_sample_counts : SampleCountFlags
-    framebuffer_stencil_sample_counts : SampleCountFlags
-    framebuffer_no_attachments_sample_counts : SampleCountFlags
-    max_color_attachments : Uint32T
-    sampled_image_color_sample_counts : SampleCountFlags
-    sampled_image_integer_sample_counts : SampleCountFlags
-    sampled_image_depth_sample_counts : SampleCountFlags
-    sampled_image_stencil_sample_counts : SampleCountFlags
-    storage_image_sample_counts : SampleCountFlags
-    max_sample_mask_words : Uint32T
-    timestamp_compute_and_graphics : Bool32
-    timestamp_period : LibC::Float
-    max_clip_distances : Uint32T
-    max_cull_distances : Uint32T
-    max_combined_clip_and_cull_distances : Uint32T
-    discrete_queue_priorities : Uint32T
-    point_size_range : LibC::Float[2]
-    line_width_range : LibC::Float[2]
-    point_size_granularity : LibC::Float
-    line_width_granularity : LibC::Float
-    strict_lines : Bool32
-    standard_sample_locations : Bool32
-    optimal_buffer_copy_offset_alignment : DeviceSize
-    optimal_buffer_copy_row_pitch_alignment : DeviceSize
-    non_coherent_atom_size : DeviceSize
-  end
-  alias X__Int32T = LibC::Int
-  alias Int32T = X__Int32T
-  struct PhysicalDeviceSparseProperties
-    residency_standard_2d_block_shape : Bool32
-    residency_standard_2d_multisample_block_shape : Bool32
-    residency_standard_3d_block_shape : Bool32
-    residency_aligned_mip_size : Bool32
-    residency_non_resident_strict : Bool32
-  end
-  struct PhysicalDeviceProperties
-    api_version : Uint32T
-    driver_version : Uint32T
-    vendor_id : Uint32T
-    device_id : Uint32T
-    device_type : PhysicalDeviceType
-    device_name : LibC::Char[256]
-    pipeline_cache_uuid : Uint8T[16]
-    limits : PhysicalDeviceLimits
-    sparse_properties : PhysicalDeviceSparseProperties
-  end
-  enum PhysicalDeviceType
-    VkPhysicalDeviceTypeOther = 0
-    VkPhysicalDeviceTypeIntegratedGpu = 1
-    VkPhysicalDeviceTypeDiscreteGpu = 2
-    VkPhysicalDeviceTypeVirtualGpu = 3
-    VkPhysicalDeviceTypeCpu = 4
-    VkPhysicalDeviceTypeBeginRange = 0
-    VkPhysicalDeviceTypeEndRange = 4
-    VkPhysicalDeviceTypeRangeSize = 5
-    VkPhysicalDeviceTypeMaxEnum = 2147483647
-  end
-  alias X__Uint8T = UInt8
-  alias Uint8T = X__Uint8T
-  struct QueueFamilyProperties
-    queue_flags : QueueFlags
-    queue_count : Uint32T
-    timestamp_valid_bits : Uint32T
-    min_image_transfer_granularity : Extent3D
-  end
-  alias QueueFlags = Flags
-  struct MemoryType
-    property_flags : MemoryPropertyFlags
-    heap_index : Uint32T
-  end
-  alias MemoryPropertyFlags = Flags
-  struct MemoryHeap
-    size : DeviceSize
-    flags : MemoryHeapFlags
-  end
-  alias MemoryHeapFlags = Flags
-  struct PhysicalDeviceMemoryProperties
-    memory_type_count : Uint32T
-    memory_types : MemoryType[32]
-    memory_heap_count : Uint32T
-    memory_heaps : MemoryHeap[16]
-  end
-  struct DeviceQueueCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : DeviceQueueCreateFlags
-    queue_family_index : Uint32T
-    queue_count : Uint32T
-    p_queue_priorities : LibC::Float*
-  end
-  alias DeviceQueueCreateFlags = Flags
-  struct DeviceCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : DeviceCreateFlags
-    queue_create_info_count : Uint32T
-    p_queue_create_infos : DeviceQueueCreateInfo*
-    enabled_layer_count : Uint32T
-    pp_enabled_layer_names : LibC::Char**
-    enabled_extension_count : Uint32T
-    pp_enabled_extension_names : LibC::Char**
-    p_enabled_features : PhysicalDeviceFeatures*
-  end
-  alias DeviceCreateFlags = Flags
-  struct ExtensionProperties
-    extension_name : LibC::Char[256]
-    spec_version : Uint32T
-  end
-  struct LayerProperties
-    layer_name : LibC::Char[256]
-    spec_version : Uint32T
-    implementation_version : Uint32T
-    description : LibC::Char[256]
-  end
-  struct SubmitInfo
-    s_type : StructureType
-    p_next : Void*
-    wait_semaphore_count : Uint32T
-    p_wait_semaphores : Semaphore*
-    p_wait_dst_stage_mask : PipelineStageFlags*
-    command_buffer_count : Uint32T
-    p_command_buffers : CommandBuffer*
-    signal_semaphore_count : Uint32T
-    p_signal_semaphores : Semaphore*
-  end
-  type Semaphore = Void*
-  alias PipelineStageFlags = Flags
-  type CommandBuffer = Void*
-  struct MemoryAllocateInfo
-    s_type : StructureType
-    p_next : Void*
-    allocation_size : DeviceSize
-    memory_type_index : Uint32T
-  end
-  struct MappedMemoryRange
-    s_type : StructureType
-    p_next : Void*
-    memory : DeviceMemory
-    offset : DeviceSize
-    size : DeviceSize
-  end
-  type DeviceMemory = Void*
-  struct MemoryRequirements
-    size : DeviceSize
-    alignment : DeviceSize
-    memory_type_bits : Uint32T
-  end
-  struct SparseImageFormatProperties
-    aspect_mask : ImageAspectFlags
-    image_granularity : Extent3D
-    flags : SparseImageFormatFlags
-  end
-  alias ImageAspectFlags = Flags
-  alias SparseImageFormatFlags = Flags
-  struct SparseImageMemoryRequirements
-    format_properties : SparseImageFormatProperties
-    image_mip_tail_first_lod : Uint32T
-    image_mip_tail_size : DeviceSize
-    image_mip_tail_offset : DeviceSize
-    image_mip_tail_stride : DeviceSize
-  end
-  struct SparseMemoryBind
-    resource_offset : DeviceSize
-    size : DeviceSize
-    memory : DeviceMemory
-    memory_offset : DeviceSize
-    flags : SparseMemoryBindFlags
-  end
-  alias SparseMemoryBindFlags = Flags
-  struct SparseBufferMemoryBindInfo
-    buffer : Buffer
-    bind_count : Uint32T
-    p_binds : SparseMemoryBind*
-  end
-  type Buffer = Void*
-  struct SparseImageOpaqueMemoryBindInfo
-    image : Image
-    bind_count : Uint32T
-    p_binds : SparseMemoryBind*
-  end
-  type Image = Void*
-  struct ImageSubresource
-    aspect_mask : ImageAspectFlags
-    mip_level : Uint32T
-    array_layer : Uint32T
-  end
-  struct Offset3D
-    x : Int32T
-    y : Int32T
-    z : Int32T
-  end
-  struct SparseImageMemoryBind
-    subresource : ImageSubresource
-    offset : Offset3D
-    extent : Extent3D
-    memory : DeviceMemory
-    memory_offset : DeviceSize
-    flags : SparseMemoryBindFlags
-  end
-  struct SparseImageMemoryBindInfo
-    image : Image
-    bind_count : Uint32T
-    p_binds : SparseImageMemoryBind*
-  end
-  struct BindSparseInfo
-    s_type : StructureType
-    p_next : Void*
-    wait_semaphore_count : Uint32T
-    p_wait_semaphores : Semaphore*
-    buffer_bind_count : Uint32T
-    p_buffer_binds : SparseBufferMemoryBindInfo*
-    image_opaque_bind_count : Uint32T
-    p_image_opaque_binds : SparseImageOpaqueMemoryBindInfo*
-    image_bind_count : Uint32T
-    p_image_binds : SparseImageMemoryBindInfo*
-    signal_semaphore_count : Uint32T
-    p_signal_semaphores : Semaphore*
-  end
-  struct FenceCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : FenceCreateFlags
-  end
-  alias FenceCreateFlags = Flags
-  struct SemaphoreCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : SemaphoreCreateFlags
-  end
-  alias SemaphoreCreateFlags = Flags
-  struct EventCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : EventCreateFlags
-  end
-  alias EventCreateFlags = Flags
-  struct QueryPoolCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : QueryPoolCreateFlags
-    query_type : QueryType
-    query_count : Uint32T
-    pipeline_statistics : QueryPipelineStatisticFlags
-  end
-  alias QueryPoolCreateFlags = Flags
-  enum QueryType
-    VkQueryTypeOcclusion = 0
-    VkQueryTypePipelineStatistics = 1
-    VkQueryTypeTimestamp = 2
-    VkQueryTypeBeginRange = 0
-    VkQueryTypeEndRange = 2
-    VkQueryTypeRangeSize = 3
-    VkQueryTypeMaxEnum = 2147483647
-  end
-  alias QueryPipelineStatisticFlags = Flags
-  struct BufferCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : BufferCreateFlags
-    size : DeviceSize
-    usage : BufferUsageFlags
-    sharing_mode : SharingMode
-    queue_family_index_count : Uint32T
-    p_queue_family_indices : Uint32T*
-  end
-  alias BufferCreateFlags = Flags
-  alias BufferUsageFlags = Flags
-  enum SharingMode
-    VkSharingModeExclusive = 0
-    VkSharingModeConcurrent = 1
-    VkSharingModeBeginRange = 0
-    VkSharingModeEndRange = 1
-    VkSharingModeRangeSize = 2
-    VkSharingModeMaxEnum = 2147483647
-  end
-  struct BufferViewCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : BufferViewCreateFlags
-    buffer : Buffer
-    format : Format
-    offset : DeviceSize
-    range : DeviceSize
-  end
-  alias BufferViewCreateFlags = Flags
   enum Format
     VkFormatUndefined = 0
     VkFormatR4G4UnormPack8 = 1
@@ -1112,24 +673,6 @@ lib Vulkan
     VkFormatRangeSize = 185
     VkFormatMaxEnum = 2147483647
   end
-  struct ImageCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : ImageCreateFlags
-    image_type : ImageType
-    format : Format
-    extent : Extent3D
-    mip_levels : Uint32T
-    array_layers : Uint32T
-    samples : SampleCountFlagBits
-    tiling : ImageTiling
-    usage : ImageUsageFlags
-    sharing_mode : SharingMode
-    queue_family_index_count : Uint32T
-    p_queue_family_indices : Uint32T*
-    initial_layout : ImageLayout
-  end
-  alias ImageCreateFlags = Flags
   enum ImageType
     VkImageType1D = 0
     VkImageType2D = 1
@@ -1139,16 +682,6 @@ lib Vulkan
     VkImageTypeRangeSize = 3
     VkImageTypeMaxEnum = 2147483647
   end
-  enum SampleCountFlagBits
-    VkSampleCount1Bit = 1
-    VkSampleCount2Bit = 2
-    VkSampleCount4Bit = 4
-    VkSampleCount8Bit = 8
-    VkSampleCount16Bit = 16
-    VkSampleCount32Bit = 32
-    VkSampleCount64Bit = 64
-    VkSampleCountFlagBitsMaxEnum = 2147483647
-  end
   enum ImageTiling
     VkImageTilingOptimal = 0
     VkImageTilingLinear = 1
@@ -1157,7 +690,34 @@ lib Vulkan
     VkImageTilingRangeSize = 2
     VkImageTilingMaxEnum = 2147483647
   end
-  alias ImageUsageFlags = Flags
+  enum PhysicalDeviceType
+    VkPhysicalDeviceTypeOther = 0
+    VkPhysicalDeviceTypeIntegratedGpu = 1
+    VkPhysicalDeviceTypeDiscreteGpu = 2
+    VkPhysicalDeviceTypeVirtualGpu = 3
+    VkPhysicalDeviceTypeCpu = 4
+    VkPhysicalDeviceTypeBeginRange = 0
+    VkPhysicalDeviceTypeEndRange = 4
+    VkPhysicalDeviceTypeRangeSize = 5
+    VkPhysicalDeviceTypeMaxEnum = 2147483647
+  end
+  enum QueryType
+    VkQueryTypeOcclusion = 0
+    VkQueryTypePipelineStatistics = 1
+    VkQueryTypeTimestamp = 2
+    VkQueryTypeBeginRange = 0
+    VkQueryTypeEndRange = 2
+    VkQueryTypeRangeSize = 3
+    VkQueryTypeMaxEnum = 2147483647
+  end
+  enum SharingMode
+    VkSharingModeExclusive = 0
+    VkSharingModeConcurrent = 1
+    VkSharingModeBeginRange = 0
+    VkSharingModeEndRange = 1
+    VkSharingModeRangeSize = 2
+    VkSharingModeMaxEnum = 2147483647
+  end
   enum ImageLayout
     VkImageLayoutUndefined = 0
     VkImageLayoutGeneral = 1
@@ -1179,18 +739,18 @@ lib Vulkan
     VkImageLayoutRangeSize = 9
     VkImageLayoutMaxEnum = 2147483647
   end
-  struct SubresourceLayout
-    offset : DeviceSize
-    size : DeviceSize
-    row_pitch : DeviceSize
-    array_pitch : DeviceSize
-    depth_pitch : DeviceSize
-  end
-  struct ComponentMapping
-    r : ComponentSwizzle
-    g : ComponentSwizzle
-    b : ComponentSwizzle
-    a : ComponentSwizzle
+  enum ImageViewType
+    VkImageViewType1D = 0
+    VkImageViewType2D = 1
+    VkImageViewType3D = 2
+    VkImageViewTypeCube = 3
+    VkImageViewType1DArray = 4
+    VkImageViewType2DArray = 5
+    VkImageViewTypeCubeArray = 6
+    VkImageViewTypeBeginRange = 0
+    VkImageViewTypeEndRange = 6
+    VkImageViewTypeRangeSize = 7
+    VkImageViewTypeMaxEnum = 2147483647
   end
   enum ComponentSwizzle
     VkComponentSwizzleIdentity = 0
@@ -1205,91 +765,6 @@ lib Vulkan
     VkComponentSwizzleRangeSize = 7
     VkComponentSwizzleMaxEnum = 2147483647
   end
-  struct ImageSubresourceRange
-    aspect_mask : ImageAspectFlags
-    base_mip_level : Uint32T
-    level_count : Uint32T
-    base_array_layer : Uint32T
-    layer_count : Uint32T
-  end
-  struct ImageViewCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : ImageViewCreateFlags
-    image : Image
-    view_type : ImageViewType
-    format : Format
-    components : ComponentMapping
-    subresource_range : ImageSubresourceRange
-  end
-  alias ImageViewCreateFlags = Flags
-  enum ImageViewType
-    VkImageViewType1D = 0
-    VkImageViewType2D = 1
-    VkImageViewType3D = 2
-    VkImageViewTypeCube = 3
-    VkImageViewType1DArray = 4
-    VkImageViewType2DArray = 5
-    VkImageViewTypeCubeArray = 6
-    VkImageViewTypeBeginRange = 0
-    VkImageViewTypeEndRange = 6
-    VkImageViewTypeRangeSize = 7
-    VkImageViewTypeMaxEnum = 2147483647
-  end
-  struct ShaderModuleCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : ShaderModuleCreateFlags
-    code_size : LibC::SizeT
-    p_code : Uint32T*
-  end
-  alias ShaderModuleCreateFlags = Flags
-  struct PipelineCacheCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineCacheCreateFlags
-    initial_data_size : LibC::SizeT
-    p_initial_data : Void*
-  end
-  alias PipelineCacheCreateFlags = Flags
-  struct SpecializationMapEntry
-    constant_id : Uint32T
-    offset : Uint32T
-    size : LibC::SizeT
-  end
-  struct SpecializationInfo
-    map_entry_count : Uint32T
-    p_map_entries : SpecializationMapEntry*
-    data_size : LibC::SizeT
-    p_data : Void*
-  end
-  struct PipelineShaderStageCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineShaderStageCreateFlags
-    stage : ShaderStageFlagBits
-    module : ShaderModule
-    p_name : LibC::Char*
-    p_specialization_info : SpecializationInfo*
-  end
-  alias PipelineShaderStageCreateFlags = Flags
-  enum ShaderStageFlagBits
-    VkShaderStageVertexBit = 1
-    VkShaderStageTessellationControlBit = 2
-    VkShaderStageTessellationEvaluationBit = 4
-    VkShaderStageGeometryBit = 8
-    VkShaderStageFragmentBit = 16
-    VkShaderStageComputeBit = 32
-    VkShaderStageAllGraphics = 31
-    VkShaderStageAll = 2147483647
-    VkShaderStageFlagBitsMaxEnum = 2147483647
-  end
-  type ShaderModule = Void*
-  struct VertexInputBindingDescription
-    binding : Uint32T
-    stride : Uint32T
-    input_rate : VertexInputRate
-  end
   enum VertexInputRate
     VkVertexInputRateVertex = 0
     VkVertexInputRateInstance = 1
@@ -1298,30 +773,6 @@ lib Vulkan
     VkVertexInputRateRangeSize = 2
     VkVertexInputRateMaxEnum = 2147483647
   end
-  struct VertexInputAttributeDescription
-    location : Uint32T
-    binding : Uint32T
-    format : Format
-    offset : Uint32T
-  end
-  struct PipelineVertexInputStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineVertexInputStateCreateFlags
-    vertex_binding_description_count : Uint32T
-    p_vertex_binding_descriptions : VertexInputBindingDescription*
-    vertex_attribute_description_count : Uint32T
-    p_vertex_attribute_descriptions : VertexInputAttributeDescription*
-  end
-  alias PipelineVertexInputStateCreateFlags = Flags
-  struct PipelineInputAssemblyStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineInputAssemblyStateCreateFlags
-    topology : PrimitiveTopology
-    primitive_restart_enable : Bool32
-  end
-  alias PipelineInputAssemblyStateCreateFlags = Flags
   enum PrimitiveTopology
     VkPrimitiveTopologyPointList = 0
     VkPrimitiveTopologyLineList = 1
@@ -1339,59 +790,6 @@ lib Vulkan
     VkPrimitiveTopologyRangeSize = 11
     VkPrimitiveTopologyMaxEnum = 2147483647
   end
-  struct PipelineTessellationStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineTessellationStateCreateFlags
-    patch_control_points : Uint32T
-  end
-  alias PipelineTessellationStateCreateFlags = Flags
-  struct Viewport
-    x : LibC::Float
-    y : LibC::Float
-    width : LibC::Float
-    height : LibC::Float
-    min_depth : LibC::Float
-    max_depth : LibC::Float
-  end
-  struct Offset2D
-    x : Int32T
-    y : Int32T
-  end
-  struct Extent2D
-    width : Uint32T
-    height : Uint32T
-  end
-  struct Rect2D
-    offset : Offset2D
-    extent : Extent2D
-  end
-  struct PipelineViewportStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineViewportStateCreateFlags
-    viewport_count : Uint32T
-    p_viewports : Viewport*
-    scissor_count : Uint32T
-    p_scissors : Rect2D*
-  end
-  alias PipelineViewportStateCreateFlags = Flags
-  struct PipelineRasterizationStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineRasterizationStateCreateFlags
-    depth_clamp_enable : Bool32
-    rasterizer_discard_enable : Bool32
-    polygon_mode : PolygonMode
-    cull_mode : CullModeFlags
-    front_face : FrontFace
-    depth_bias_enable : Bool32
-    depth_bias_constant_factor : LibC::Float
-    depth_bias_clamp : LibC::Float
-    depth_bias_slope_factor : LibC::Float
-    line_width : LibC::Float
-  end
-  alias PipelineRasterizationStateCreateFlags = Flags
   enum PolygonMode
     VkPolygonModeFill = 0
     VkPolygonModeLine = 1
@@ -1402,7 +800,6 @@ lib Vulkan
     VkPolygonModeRangeSize = 3
     VkPolygonModeMaxEnum = 2147483647
   end
-  alias CullModeFlags = Flags
   enum FrontFace
     VkFrontFaceCounterClockwise = 0
     VkFrontFaceClockwise = 1
@@ -1410,42 +807,6 @@ lib Vulkan
     VkFrontFaceEndRange = 1
     VkFrontFaceRangeSize = 2
     VkFrontFaceMaxEnum = 2147483647
-  end
-  struct PipelineMultisampleStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineMultisampleStateCreateFlags
-    rasterization_samples : SampleCountFlagBits
-    sample_shading_enable : Bool32
-    min_sample_shading : LibC::Float
-    p_sample_mask : SampleMask*
-    alpha_to_coverage_enable : Bool32
-    alpha_to_one_enable : Bool32
-  end
-  alias PipelineMultisampleStateCreateFlags = Flags
-  alias SampleMask = Uint32T
-  struct StencilOpState
-    fail_op : StencilOp
-    pass_op : StencilOp
-    depth_fail_op : StencilOp
-    compare_op : CompareOp
-    compare_mask : Uint32T
-    write_mask : Uint32T
-    reference : Uint32T
-  end
-  enum StencilOp
-    VkStencilOpKeep = 0
-    VkStencilOpZero = 1
-    VkStencilOpReplace = 2
-    VkStencilOpIncrementAndClamp = 3
-    VkStencilOpDecrementAndClamp = 4
-    VkStencilOpInvert = 5
-    VkStencilOpIncrementAndWrap = 6
-    VkStencilOpDecrementAndWrap = 7
-    VkStencilOpBeginRange = 0
-    VkStencilOpEndRange = 7
-    VkStencilOpRangeSize = 8
-    VkStencilOpMaxEnum = 2147483647
   end
   enum CompareOp
     VkCompareOpNever = 0
@@ -1461,30 +822,41 @@ lib Vulkan
     VkCompareOpRangeSize = 8
     VkCompareOpMaxEnum = 2147483647
   end
-  struct PipelineDepthStencilStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineDepthStencilStateCreateFlags
-    depth_test_enable : Bool32
-    depth_write_enable : Bool32
-    depth_compare_op : CompareOp
-    depth_bounds_test_enable : Bool32
-    stencil_test_enable : Bool32
-    front : StencilOpState
-    back : StencilOpState
-    min_depth_bounds : LibC::Float
-    max_depth_bounds : LibC::Float
+  enum StencilOp
+    VkStencilOpKeep = 0
+    VkStencilOpZero = 1
+    VkStencilOpReplace = 2
+    VkStencilOpIncrementAndClamp = 3
+    VkStencilOpDecrementAndClamp = 4
+    VkStencilOpInvert = 5
+    VkStencilOpIncrementAndWrap = 6
+    VkStencilOpDecrementAndWrap = 7
+    VkStencilOpBeginRange = 0
+    VkStencilOpEndRange = 7
+    VkStencilOpRangeSize = 8
+    VkStencilOpMaxEnum = 2147483647
   end
-  alias PipelineDepthStencilStateCreateFlags = Flags
-  struct PipelineColorBlendAttachmentState
-    blend_enable : Bool32
-    src_color_blend_factor : BlendFactor
-    dst_color_blend_factor : BlendFactor
-    color_blend_op : BlendOp
-    src_alpha_blend_factor : BlendFactor
-    dst_alpha_blend_factor : BlendFactor
-    alpha_blend_op : BlendOp
-    color_write_mask : ColorComponentFlags
+  enum LogicOp
+    VkLogicOpClear = 0
+    VkLogicOpAnd = 1
+    VkLogicOpAndReverse = 2
+    VkLogicOpCopy = 3
+    VkLogicOpAndInverted = 4
+    VkLogicOpNoOp = 5
+    VkLogicOpXor = 6
+    VkLogicOpOr = 7
+    VkLogicOpNor = 8
+    VkLogicOpEquivalent = 9
+    VkLogicOpInvert = 10
+    VkLogicOpOrReverse = 11
+    VkLogicOpCopyInverted = 12
+    VkLogicOpOrInverted = 13
+    VkLogicOpNand = 14
+    VkLogicOpSet = 15
+    VkLogicOpBeginRange = 0
+    VkLogicOpEndRange = 15
+    VkLogicOpRangeSize = 16
+    VkLogicOpMaxEnum = 2147483647
   end
   enum BlendFactor
     VkBlendFactorZero = 0
@@ -1568,48 +940,6 @@ lib Vulkan
     VkBlendOpRangeSize = 5
     VkBlendOpMaxEnum = 2147483647
   end
-  alias ColorComponentFlags = Flags
-  struct PipelineColorBlendStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineColorBlendStateCreateFlags
-    logic_op_enable : Bool32
-    logic_op : LogicOp
-    attachment_count : Uint32T
-    p_attachments : PipelineColorBlendAttachmentState*
-    blend_constants : LibC::Float[4]
-  end
-  alias PipelineColorBlendStateCreateFlags = Flags
-  enum LogicOp
-    VkLogicOpClear = 0
-    VkLogicOpAnd = 1
-    VkLogicOpAndReverse = 2
-    VkLogicOpCopy = 3
-    VkLogicOpAndInverted = 4
-    VkLogicOpNoOp = 5
-    VkLogicOpXor = 6
-    VkLogicOpOr = 7
-    VkLogicOpNor = 8
-    VkLogicOpEquivalent = 9
-    VkLogicOpInvert = 10
-    VkLogicOpOrReverse = 11
-    VkLogicOpCopyInverted = 12
-    VkLogicOpOrInverted = 13
-    VkLogicOpNand = 14
-    VkLogicOpSet = 15
-    VkLogicOpBeginRange = 0
-    VkLogicOpEndRange = 15
-    VkLogicOpRangeSize = 16
-    VkLogicOpMaxEnum = 2147483647
-  end
-  struct PipelineDynamicStateCreateInfo
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineDynamicStateCreateFlags
-    dynamic_state_count : Uint32T
-    p_dynamic_states : DynamicState*
-  end
-  alias PipelineDynamicStateCreateFlags = Flags
   enum DynamicState
     VkDynamicStateViewport = 0
     VkDynamicStateScissor = 1
@@ -1628,6 +958,1171 @@ lib Vulkan
     VkDynamicStateRangeSize = 9
     VkDynamicStateMaxEnum = 2147483647
   end
+  enum Filter
+    VkFilterNearest = 0
+    VkFilterLinear = 1
+    VkFilterCubicImg = 1000015000
+    VkFilterBeginRange = 0
+    VkFilterEndRange = 1
+    VkFilterRangeSize = 2
+    VkFilterMaxEnum = 2147483647
+  end
+  enum SamplerMipmapMode
+    VkSamplerMipmapModeNearest = 0
+    VkSamplerMipmapModeLinear = 1
+    VkSamplerMipmapModeBeginRange = 0
+    VkSamplerMipmapModeEndRange = 1
+    VkSamplerMipmapModeRangeSize = 2
+    VkSamplerMipmapModeMaxEnum = 2147483647
+  end
+  enum SamplerAddressMode
+    VkSamplerAddressModeRepeat = 0
+    VkSamplerAddressModeMirroredRepeat = 1
+    VkSamplerAddressModeClampToEdge = 2
+    VkSamplerAddressModeClampToBorder = 3
+    VkSamplerAddressModeMirrorClampToEdge = 4
+    VkSamplerAddressModeBeginRange = 0
+    VkSamplerAddressModeEndRange = 3
+    VkSamplerAddressModeRangeSize = 4
+    VkSamplerAddressModeMaxEnum = 2147483647
+  end
+  enum BorderColor
+    VkBorderColorFloatTransparentBlack = 0
+    VkBorderColorIntTransparentBlack = 1
+    VkBorderColorFloatOpaqueBlack = 2
+    VkBorderColorIntOpaqueBlack = 3
+    VkBorderColorFloatOpaqueWhite = 4
+    VkBorderColorIntOpaqueWhite = 5
+    VkBorderColorBeginRange = 0
+    VkBorderColorEndRange = 5
+    VkBorderColorRangeSize = 6
+    VkBorderColorMaxEnum = 2147483647
+  end
+  enum DescriptorType
+    VkDescriptorTypeSampler = 0
+    VkDescriptorTypeCombinedImageSampler = 1
+    VkDescriptorTypeSampledImage = 2
+    VkDescriptorTypeStorageImage = 3
+    VkDescriptorTypeUniformTexelBuffer = 4
+    VkDescriptorTypeStorageTexelBuffer = 5
+    VkDescriptorTypeUniformBuffer = 6
+    VkDescriptorTypeStorageBuffer = 7
+    VkDescriptorTypeUniformBufferDynamic = 8
+    VkDescriptorTypeStorageBufferDynamic = 9
+    VkDescriptorTypeInputAttachment = 10
+    VkDescriptorTypeBeginRange = 0
+    VkDescriptorTypeEndRange = 10
+    VkDescriptorTypeRangeSize = 11
+    VkDescriptorTypeMaxEnum = 2147483647
+  end
+  enum AttachmentLoadOp
+    VkAttachmentLoadOpLoad = 0
+    VkAttachmentLoadOpClear = 1
+    VkAttachmentLoadOpDontCare = 2
+    VkAttachmentLoadOpBeginRange = 0
+    VkAttachmentLoadOpEndRange = 2
+    VkAttachmentLoadOpRangeSize = 3
+    VkAttachmentLoadOpMaxEnum = 2147483647
+  end
+  enum AttachmentStoreOp
+    VkAttachmentStoreOpStore = 0
+    VkAttachmentStoreOpDontCare = 1
+    VkAttachmentStoreOpBeginRange = 0
+    VkAttachmentStoreOpEndRange = 1
+    VkAttachmentStoreOpRangeSize = 2
+    VkAttachmentStoreOpMaxEnum = 2147483647
+  end
+  enum PipelineBindPoint
+    VkPipelineBindPointGraphics = 0
+    VkPipelineBindPointCompute = 1
+    VkPipelineBindPointBeginRange = 0
+    VkPipelineBindPointEndRange = 1
+    VkPipelineBindPointRangeSize = 2
+    VkPipelineBindPointMaxEnum = 2147483647
+  end
+  enum CommandBufferLevel
+    VkCommandBufferLevelPrimary = 0
+    VkCommandBufferLevelSecondary = 1
+    VkCommandBufferLevelBeginRange = 0
+    VkCommandBufferLevelEndRange = 1
+    VkCommandBufferLevelRangeSize = 2
+    VkCommandBufferLevelMaxEnum = 2147483647
+  end
+  enum IndexType
+    VkIndexTypeUint16 = 0
+    VkIndexTypeUint32 = 1
+    VkIndexTypeBeginRange = 0
+    VkIndexTypeEndRange = 1
+    VkIndexTypeRangeSize = 2
+    VkIndexTypeMaxEnum = 2147483647
+  end
+  enum SubpassContents
+    VkSubpassContentsInline = 0
+    VkSubpassContentsSecondaryCommandBuffers = 1
+    VkSubpassContentsBeginRange = 0
+    VkSubpassContentsEndRange = 1
+    VkSubpassContentsRangeSize = 2
+    VkSubpassContentsMaxEnum = 2147483647
+  end
+  enum ObjectType
+    VkObjectTypeUnknown = 0
+    VkObjectTypeInstance = 1
+    VkObjectTypePhysicalDevice = 2
+    VkObjectTypeDevice = 3
+    VkObjectTypeQueue = 4
+    VkObjectTypeSemaphore = 5
+    VkObjectTypeCommandBuffer = 6
+    VkObjectTypeFence = 7
+    VkObjectTypeDeviceMemory = 8
+    VkObjectTypeBuffer = 9
+    VkObjectTypeImage = 10
+    VkObjectTypeEvent = 11
+    VkObjectTypeQueryPool = 12
+    VkObjectTypeBufferView = 13
+    VkObjectTypeImageView = 14
+    VkObjectTypeShaderModule = 15
+    VkObjectTypePipelineCache = 16
+    VkObjectTypePipelineLayout = 17
+    VkObjectTypeRenderPass = 18
+    VkObjectTypePipeline = 19
+    VkObjectTypeDescriptorSetLayout = 20
+    VkObjectTypeSampler = 21
+    VkObjectTypeDescriptorPool = 22
+    VkObjectTypeDescriptorSet = 23
+    VkObjectTypeFramebuffer = 24
+    VkObjectTypeCommandPool = 25
+    VkObjectTypeSamplerYcbcrConversion = 1000156000
+    VkObjectTypeDescriptorUpdateTemplate = 1000085000
+    VkObjectTypeSurfaceKhr = 1000000000
+    VkObjectTypeSwapchainKhr = 1000001000
+    VkObjectTypeDisplayKhr = 1000002000
+    VkObjectTypeDisplayModeKhr = 1000002001
+    VkObjectTypeDebugReportCallbackExt = 1000011000
+    VkObjectTypeObjectTableNvx = 1000086000
+    VkObjectTypeIndirectCommandsLayoutNvx = 1000086001
+    VkObjectTypeDebugUtilsMessengerExt = 1000128000
+    VkObjectTypeValidationCacheExt = 1000160000
+    VkObjectTypeDescriptorUpdateTemplateKhr = 1000085000
+    VkObjectTypeSamplerYcbcrConversionKhr = 1000156000
+    VkObjectTypeBeginRange = 0
+    VkObjectTypeEndRange = 25
+    VkObjectTypeRangeSize = 26
+    VkObjectTypeMaxEnum = 2147483647
+  end
+  enum VendorId
+    VkVendorIdViv = 65537
+    VkVendorIdVsi = 65538
+    VkVendorIdKazan = 65539
+    VkVendorIdBeginRange = 65537
+    VkVendorIdEndRange = 65539
+    VkVendorIdRangeSize = 3
+    VkVendorIdMaxEnum = 2147483647
+  end
+  enum FormatFeatureFlagBits
+    VkFormatFeatureSampledImageBit = 1
+    VkFormatFeatureStorageImageBit = 2
+    VkFormatFeatureStorageImageAtomicBit = 4
+    VkFormatFeatureUniformTexelBufferBit = 8
+    VkFormatFeatureStorageTexelBufferBit = 16
+    VkFormatFeatureStorageTexelBufferAtomicBit = 32
+    VkFormatFeatureVertexBufferBit = 64
+    VkFormatFeatureColorAttachmentBit = 128
+    VkFormatFeatureColorAttachmentBlendBit = 256
+    VkFormatFeatureDepthStencilAttachmentBit = 512
+    VkFormatFeatureBlitSrcBit = 1024
+    VkFormatFeatureBlitDstBit = 2048
+    VkFormatFeatureSampledImageFilterLinearBit = 4096
+    VkFormatFeatureTransferSrcBit = 16384
+    VkFormatFeatureTransferDstBit = 32768
+    VkFormatFeatureMidpointChromaSamplesBit = 131072
+    VkFormatFeatureSampledImageYcbcrConversionLinearFilterBit = 262144
+    VkFormatFeatureSampledImageYcbcrConversionSeparateReconstructionFilterBit = 524288
+    VkFormatFeatureSampledImageYcbcrConversionChromaReconstructionExplicitBit = 1048576
+    VkFormatFeatureSampledImageYcbcrConversionChromaReconstructionExplicitForceableBit = 2097152
+    VkFormatFeatureDisjointBit = 4194304
+    VkFormatFeatureCositedChromaSamplesBit = 8388608
+    VkFormatFeatureSampledImageFilterCubicBitImg = 8192
+    VkFormatFeatureSampledImageFilterMinmaxBitExt = 65536
+    VkFormatFeatureTransferSrcBitKhr = 16384
+    VkFormatFeatureTransferDstBitKhr = 32768
+    VkFormatFeatureMidpointChromaSamplesBitKhr = 131072
+    VkFormatFeatureSampledImageYcbcrConversionLinearFilterBitKhr = 262144
+    VkFormatFeatureSampledImageYcbcrConversionSeparateReconstructionFilterBitKhr = 524288
+    VkFormatFeatureSampledImageYcbcrConversionChromaReconstructionExplicitBitKhr = 1048576
+    VkFormatFeatureSampledImageYcbcrConversionChromaReconstructionExplicitForceableBitKhr = 2097152
+    VkFormatFeatureDisjointBitKhr = 4194304
+    VkFormatFeatureCositedChromaSamplesBitKhr = 8388608
+    VkFormatFeatureFlagBitsMaxEnum = 2147483647
+  end
+  enum ImageUsageFlagBits
+    VkImageUsageTransferSrcBit = 1
+    VkImageUsageTransferDstBit = 2
+    VkImageUsageSampledBit = 4
+    VkImageUsageStorageBit = 8
+    VkImageUsageColorAttachmentBit = 16
+    VkImageUsageDepthStencilAttachmentBit = 32
+    VkImageUsageTransientAttachmentBit = 64
+    VkImageUsageInputAttachmentBit = 128
+    VkImageUsageFlagBitsMaxEnum = 2147483647
+  end
+  enum ImageCreateFlagBits
+    VkImageCreateSparseBindingBit = 1
+    VkImageCreateSparseResidencyBit = 2
+    VkImageCreateSparseAliasedBit = 4
+    VkImageCreateMutableFormatBit = 8
+    VkImageCreateCubeCompatibleBit = 16
+    VkImageCreateAliasBit = 1024
+    VkImageCreateSplitInstanceBindRegionsBit = 64
+    VkImageCreate2DArrayCompatibleBit = 32
+    VkImageCreateBlockTexelViewCompatibleBit = 128
+    VkImageCreateExtendedUsageBit = 256
+    VkImageCreateProtectedBit = 2048
+    VkImageCreateDisjointBit = 512
+    VkImageCreateSampleLocationsCompatibleDepthBitExt = 4096
+    VkImageCreateSplitInstanceBindRegionsBitKhr = 64
+    VkImageCreate2DArrayCompatibleBitKhr = 32
+    VkImageCreateBlockTexelViewCompatibleBitKhr = 128
+    VkImageCreateExtendedUsageBitKhr = 256
+    VkImageCreateDisjointBitKhr = 512
+    VkImageCreateAliasBitKhr = 1024
+    VkImageCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum SampleCountFlagBits
+    VkSampleCount1Bit = 1
+    VkSampleCount2Bit = 2
+    VkSampleCount4Bit = 4
+    VkSampleCount8Bit = 8
+    VkSampleCount16Bit = 16
+    VkSampleCount32Bit = 32
+    VkSampleCount64Bit = 64
+    VkSampleCountFlagBitsMaxEnum = 2147483647
+  end
+  enum QueueFlagBits
+    VkQueueGraphicsBit = 1
+    VkQueueComputeBit = 2
+    VkQueueTransferBit = 4
+    VkQueueSparseBindingBit = 8
+    VkQueueProtectedBit = 16
+    VkQueueFlagBitsMaxEnum = 2147483647
+  end
+  enum MemoryPropertyFlagBits
+    VkMemoryPropertyDeviceLocalBit = 1
+    VkMemoryPropertyHostVisibleBit = 2
+    VkMemoryPropertyHostCoherentBit = 4
+    VkMemoryPropertyHostCachedBit = 8
+    VkMemoryPropertyLazilyAllocatedBit = 16
+    VkMemoryPropertyProtectedBit = 32
+    VkMemoryPropertyFlagBitsMaxEnum = 2147483647
+  end
+  enum MemoryHeapFlagBits
+    VkMemoryHeapDeviceLocalBit = 1
+    VkMemoryHeapMultiInstanceBit = 2
+    VkMemoryHeapMultiInstanceBitKhr = 2
+    VkMemoryHeapFlagBitsMaxEnum = 2147483647
+  end
+  enum DeviceQueueCreateFlagBits
+    VkDeviceQueueCreateProtectedBit = 1
+    VkDeviceQueueCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum PipelineStageFlagBits
+    VkPipelineStageTopOfPipeBit = 1
+    VkPipelineStageDrawIndirectBit = 2
+    VkPipelineStageVertexInputBit = 4
+    VkPipelineStageVertexShaderBit = 8
+    VkPipelineStageTessellationControlShaderBit = 16
+    VkPipelineStageTessellationEvaluationShaderBit = 32
+    VkPipelineStageGeometryShaderBit = 64
+    VkPipelineStageFragmentShaderBit = 128
+    VkPipelineStageEarlyFragmentTestsBit = 256
+    VkPipelineStageLateFragmentTestsBit = 512
+    VkPipelineStageColorAttachmentOutputBit = 1024
+    VkPipelineStageComputeShaderBit = 2048
+    VkPipelineStageTransferBit = 4096
+    VkPipelineStageBottomOfPipeBit = 8192
+    VkPipelineStageHostBit = 16384
+    VkPipelineStageAllGraphicsBit = 32768
+    VkPipelineStageAllCommandsBit = 65536
+    VkPipelineStageConditionalRenderingBitExt = 262144
+    VkPipelineStageCommandProcessBitNvx = 131072
+    VkPipelineStageFlagBitsMaxEnum = 2147483647
+  end
+  enum ImageAspectFlagBits
+    VkImageAspectColorBit = 1
+    VkImageAspectDepthBit = 2
+    VkImageAspectStencilBit = 4
+    VkImageAspectMetadataBit = 8
+    VkImageAspectPlane0Bit = 16
+    VkImageAspectPlane1Bit = 32
+    VkImageAspectPlane2Bit = 64
+    VkImageAspectPlane0BitKhr = 16
+    VkImageAspectPlane1BitKhr = 32
+    VkImageAspectPlane2BitKhr = 64
+    VkImageAspectFlagBitsMaxEnum = 2147483647
+  end
+  enum SparseImageFormatFlagBits
+    VkSparseImageFormatSingleMiptailBit = 1
+    VkSparseImageFormatAlignedMipSizeBit = 2
+    VkSparseImageFormatNonstandardBlockSizeBit = 4
+    VkSparseImageFormatFlagBitsMaxEnum = 2147483647
+  end
+  enum SparseMemoryBindFlagBits
+    VkSparseMemoryBindMetadataBit = 1
+    VkSparseMemoryBindFlagBitsMaxEnum = 2147483647
+  end
+  enum FenceCreateFlagBits
+    VkFenceCreateSignaledBit = 1
+    VkFenceCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum QueryPipelineStatisticFlagBits
+    VkQueryPipelineStatisticInputAssemblyVerticesBit = 1
+    VkQueryPipelineStatisticInputAssemblyPrimitivesBit = 2
+    VkQueryPipelineStatisticVertexShaderInvocationsBit = 4
+    VkQueryPipelineStatisticGeometryShaderInvocationsBit = 8
+    VkQueryPipelineStatisticGeometryShaderPrimitivesBit = 16
+    VkQueryPipelineStatisticClippingInvocationsBit = 32
+    VkQueryPipelineStatisticClippingPrimitivesBit = 64
+    VkQueryPipelineStatisticFragmentShaderInvocationsBit = 128
+    VkQueryPipelineStatisticTessellationControlShaderPatchesBit = 256
+    VkQueryPipelineStatisticTessellationEvaluationShaderInvocationsBit = 512
+    VkQueryPipelineStatisticComputeShaderInvocationsBit = 1024
+    VkQueryPipelineStatisticFlagBitsMaxEnum = 2147483647
+  end
+  enum QueryResultFlagBits
+    VkQueryResult64Bit = 1
+    VkQueryResultWaitBit = 2
+    VkQueryResultWithAvailabilityBit = 4
+    VkQueryResultPartialBit = 8
+    VkQueryResultFlagBitsMaxEnum = 2147483647
+  end
+  enum BufferCreateFlagBits
+    VkBufferCreateSparseBindingBit = 1
+    VkBufferCreateSparseResidencyBit = 2
+    VkBufferCreateSparseAliasedBit = 4
+    VkBufferCreateProtectedBit = 8
+    VkBufferCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum BufferUsageFlagBits
+    VkBufferUsageTransferSrcBit = 1
+    VkBufferUsageTransferDstBit = 2
+    VkBufferUsageUniformTexelBufferBit = 4
+    VkBufferUsageStorageTexelBufferBit = 8
+    VkBufferUsageUniformBufferBit = 16
+    VkBufferUsageStorageBufferBit = 32
+    VkBufferUsageIndexBufferBit = 64
+    VkBufferUsageVertexBufferBit = 128
+    VkBufferUsageIndirectBufferBit = 256
+    VkBufferUsageConditionalRenderingBitExt = 512
+    VkBufferUsageFlagBitsMaxEnum = 2147483647
+  end
+  enum PipelineCreateFlagBits
+    VkPipelineCreateDisableOptimizationBit = 1
+    VkPipelineCreateAllowDerivativesBit = 2
+    VkPipelineCreateDerivativeBit = 4
+    VkPipelineCreateViewIndexFromDeviceIndexBit = 8
+    VkPipelineCreateDispatchBase = 16
+    VkPipelineCreateViewIndexFromDeviceIndexBitKhr = 8
+    VkPipelineCreateDispatchBaseKhr = 16
+    VkPipelineCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum ShaderStageFlagBits
+    VkShaderStageVertexBit = 1
+    VkShaderStageTessellationControlBit = 2
+    VkShaderStageTessellationEvaluationBit = 4
+    VkShaderStageGeometryBit = 8
+    VkShaderStageFragmentBit = 16
+    VkShaderStageComputeBit = 32
+    VkShaderStageAllGraphics = 31
+    VkShaderStageAll = 2147483647
+    VkShaderStageFlagBitsMaxEnum = 2147483647
+  end
+  enum CullModeFlagBits
+    VkCullModeNone = 0
+    VkCullModeFrontBit = 1
+    VkCullModeBackBit = 2
+    VkCullModeFrontAndBack = 3
+    VkCullModeFlagBitsMaxEnum = 2147483647
+  end
+  enum ColorComponentFlagBits
+    VkColorComponentRBit = 1
+    VkColorComponentGBit = 2
+    VkColorComponentBBit = 4
+    VkColorComponentABit = 8
+    VkColorComponentFlagBitsMaxEnum = 2147483647
+  end
+  enum DescriptorSetLayoutCreateFlagBits
+    VkDescriptorSetLayoutCreatePushDescriptorBitKhr = 1
+    VkDescriptorSetLayoutCreateUpdateAfterBindPoolBitExt = 2
+    VkDescriptorSetLayoutCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum DescriptorPoolCreateFlagBits
+    VkDescriptorPoolCreateFreeDescriptorSetBit = 1
+    VkDescriptorPoolCreateUpdateAfterBindBitExt = 2
+    VkDescriptorPoolCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum AttachmentDescriptionFlagBits
+    VkAttachmentDescriptionMayAliasBit = 1
+    VkAttachmentDescriptionFlagBitsMaxEnum = 2147483647
+  end
+  enum SubpassDescriptionFlagBits
+    VkSubpassDescriptionPerViewAttributesBitNvx = 1
+    VkSubpassDescriptionPerViewPositionXOnlyBitNvx = 2
+    VkSubpassDescriptionFlagBitsMaxEnum = 2147483647
+  end
+  enum AccessFlagBits
+    VkAccessIndirectCommandReadBit = 1
+    VkAccessIndexReadBit = 2
+    VkAccessVertexAttributeReadBit = 4
+    VkAccessUniformReadBit = 8
+    VkAccessInputAttachmentReadBit = 16
+    VkAccessShaderReadBit = 32
+    VkAccessShaderWriteBit = 64
+    VkAccessColorAttachmentReadBit = 128
+    VkAccessColorAttachmentWriteBit = 256
+    VkAccessDepthStencilAttachmentReadBit = 512
+    VkAccessDepthStencilAttachmentWriteBit = 1024
+    VkAccessTransferReadBit = 2048
+    VkAccessTransferWriteBit = 4096
+    VkAccessHostReadBit = 8192
+    VkAccessHostWriteBit = 16384
+    VkAccessMemoryReadBit = 32768
+    VkAccessMemoryWriteBit = 65536
+    VkAccessConditionalRenderingReadBitExt = 1048576
+    VkAccessCommandProcessReadBitNvx = 131072
+    VkAccessCommandProcessWriteBitNvx = 262144
+    VkAccessColorAttachmentReadNoncoherentBitExt = 524288
+    VkAccessFlagBitsMaxEnum = 2147483647
+  end
+  enum DependencyFlagBits
+    VkDependencyByRegionBit = 1
+    VkDependencyDeviceGroupBit = 4
+    VkDependencyViewLocalBit = 2
+    VkDependencyViewLocalBitKhr = 2
+    VkDependencyDeviceGroupBitKhr = 4
+    VkDependencyFlagBitsMaxEnum = 2147483647
+  end
+  enum CommandPoolCreateFlagBits
+    VkCommandPoolCreateTransientBit = 1
+    VkCommandPoolCreateResetCommandBufferBit = 2
+    VkCommandPoolCreateProtectedBit = 4
+    VkCommandPoolCreateFlagBitsMaxEnum = 2147483647
+  end
+  enum CommandPoolResetFlagBits
+    VkCommandPoolResetReleaseResourcesBit = 1
+    VkCommandPoolResetFlagBitsMaxEnum = 2147483647
+  end
+  enum CommandBufferUsageFlagBits
+    VkCommandBufferUsageOneTimeSubmitBit = 1
+    VkCommandBufferUsageRenderPassContinueBit = 2
+    VkCommandBufferUsageSimultaneousUseBit = 4
+    VkCommandBufferUsageFlagBitsMaxEnum = 2147483647
+  end
+  enum QueryControlFlagBits
+    VkQueryControlPreciseBit = 1
+    VkQueryControlFlagBitsMaxEnum = 2147483647
+  end
+  enum CommandBufferResetFlagBits
+    VkCommandBufferResetReleaseResourcesBit = 1
+    VkCommandBufferResetFlagBitsMaxEnum = 2147483647
+  end
+  enum StencilFaceFlagBits
+    VkStencilFaceFrontBit = 1
+    VkStencilFaceBackBit = 2
+    VkStencilFrontAndBack = 3
+    VkStencilFaceFlagBitsMaxEnum = 2147483647
+  end
+  struct ApplicationInfo
+    s_type : StructureType
+    p_next : Void*
+    p_application_name : LibC::Char*
+    application_version : Uint32T
+    p_engine_name : LibC::Char*
+    engine_version : Uint32T
+    api_version : Uint32T
+  end
+  alias X__Uint32T = LibC::UInt
+  alias Uint32T = X__Uint32T
+  struct InstanceCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : InstanceCreateFlags
+    p_application_info : ApplicationInfo*
+    enabled_layer_count : Uint32T
+    pp_enabled_layer_names : LibC::Char**
+    enabled_extension_count : Uint32T
+    pp_enabled_extension_names : LibC::Char**
+  end
+  alias Flags = Uint32T
+  alias InstanceCreateFlags = Flags
+  struct AllocationCallbacks
+    p_user_data : Void*
+    pfn_allocation : PfnVkAllocationFunction
+    pfn_reallocation : PfnVkReallocationFunction
+    pfn_free : PfnVkFreeFunction
+    pfn_internal_allocation : PfnVkInternalAllocationNotification
+    pfn_internal_free : PfnVkInternalFreeNotification
+  end
+  alias PfnVkAllocationFunction = (Void*, LibC::SizeT, LibC::SizeT, SystemAllocationScope -> Void*)
+  alias PfnVkReallocationFunction = (Void*, Void*, LibC::SizeT, LibC::SizeT, SystemAllocationScope -> Void*)
+  alias PfnVkFreeFunction = (Void*, Void* -> Void)
+  alias PfnVkInternalAllocationNotification = (Void*, LibC::SizeT, InternalAllocationType, SystemAllocationScope -> Void)
+  alias PfnVkInternalFreeNotification = (Void*, LibC::SizeT, InternalAllocationType, SystemAllocationScope -> Void)
+  struct PhysicalDeviceFeatures
+    robust_buffer_access : Bool32
+    full_draw_index_uint32 : Bool32
+    image_cube_array : Bool32
+    independent_blend : Bool32
+    geometry_shader : Bool32
+    tessellation_shader : Bool32
+    sample_rate_shading : Bool32
+    dual_src_blend : Bool32
+    logic_op : Bool32
+    multi_draw_indirect : Bool32
+    draw_indirect_first_instance : Bool32
+    depth_clamp : Bool32
+    depth_bias_clamp : Bool32
+    fill_mode_non_solid : Bool32
+    depth_bounds : Bool32
+    wide_lines : Bool32
+    large_points : Bool32
+    alpha_to_one : Bool32
+    multi_viewport : Bool32
+    sampler_anisotropy : Bool32
+    texture_compression_etc2 : Bool32
+    texture_compression_astc_ldr : Bool32
+    texture_compression_bc : Bool32
+    occlusion_query_precise : Bool32
+    pipeline_statistics_query : Bool32
+    vertex_pipeline_stores_and_atomics : Bool32
+    fragment_stores_and_atomics : Bool32
+    shader_tessellation_and_geometry_point_size : Bool32
+    shader_image_gather_extended : Bool32
+    shader_storage_image_extended_formats : Bool32
+    shader_storage_image_multisample : Bool32
+    shader_storage_image_read_without_format : Bool32
+    shader_storage_image_write_without_format : Bool32
+    shader_uniform_buffer_array_dynamic_indexing : Bool32
+    shader_sampled_image_array_dynamic_indexing : Bool32
+    shader_storage_buffer_array_dynamic_indexing : Bool32
+    shader_storage_image_array_dynamic_indexing : Bool32
+    shader_clip_distance : Bool32
+    shader_cull_distance : Bool32
+    shader_float64 : Bool32
+    shader_int64 : Bool32
+    shader_int16 : Bool32
+    shader_resource_residency : Bool32
+    shader_resource_min_lod : Bool32
+    sparse_binding : Bool32
+    sparse_residency_buffer : Bool32
+    sparse_residency_image_2d : Bool32
+    sparse_residency_image_3d : Bool32
+    sparse_residency_2_samples : Bool32
+    sparse_residency_4_samples : Bool32
+    sparse_residency_8_samples : Bool32
+    sparse_residency_16_samples : Bool32
+    sparse_residency_aliased : Bool32
+    variable_multisample_rate : Bool32
+    inherited_queries : Bool32
+  end
+  alias Bool32 = Uint32T
+  struct FormatProperties
+    linear_tiling_features : FormatFeatureFlags
+    optimal_tiling_features : FormatFeatureFlags
+    buffer_features : FormatFeatureFlags
+  end
+  alias FormatFeatureFlags = Flags
+  struct Extent3D
+    width : Uint32T
+    height : Uint32T
+    depth : Uint32T
+  end
+  struct ImageFormatProperties
+    max_extent : Extent3D
+    max_mip_levels : Uint32T
+    max_array_layers : Uint32T
+    sample_counts : SampleCountFlags
+    max_resource_size : DeviceSize
+  end
+  alias SampleCountFlags = Flags
+  alias X__Uint64T = LibC::ULong
+  alias Uint64T = X__Uint64T
+  alias DeviceSize = Uint64T
+  struct PhysicalDeviceLimits
+    max_image_dimension_1d : Uint32T
+    max_image_dimension_2d : Uint32T
+    max_image_dimension_3d : Uint32T
+    max_image_dimension_cube : Uint32T
+    max_image_array_layers : Uint32T
+    max_texel_buffer_elements : Uint32T
+    max_uniform_buffer_range : Uint32T
+    max_storage_buffer_range : Uint32T
+    max_push_constants_size : Uint32T
+    max_memory_allocation_count : Uint32T
+    max_sampler_allocation_count : Uint32T
+    buffer_image_granularity : DeviceSize
+    sparse_address_space_size : DeviceSize
+    max_bound_descriptor_sets : Uint32T
+    max_per_stage_descriptor_samplers : Uint32T
+    max_per_stage_descriptor_uniform_buffers : Uint32T
+    max_per_stage_descriptor_storage_buffers : Uint32T
+    max_per_stage_descriptor_sampled_images : Uint32T
+    max_per_stage_descriptor_storage_images : Uint32T
+    max_per_stage_descriptor_input_attachments : Uint32T
+    max_per_stage_resources : Uint32T
+    max_descriptor_set_samplers : Uint32T
+    max_descriptor_set_uniform_buffers : Uint32T
+    max_descriptor_set_uniform_buffers_dynamic : Uint32T
+    max_descriptor_set_storage_buffers : Uint32T
+    max_descriptor_set_storage_buffers_dynamic : Uint32T
+    max_descriptor_set_sampled_images : Uint32T
+    max_descriptor_set_storage_images : Uint32T
+    max_descriptor_set_input_attachments : Uint32T
+    max_vertex_input_attributes : Uint32T
+    max_vertex_input_bindings : Uint32T
+    max_vertex_input_attribute_offset : Uint32T
+    max_vertex_input_binding_stride : Uint32T
+    max_vertex_output_components : Uint32T
+    max_tessellation_generation_level : Uint32T
+    max_tessellation_patch_size : Uint32T
+    max_tessellation_control_per_vertex_input_components : Uint32T
+    max_tessellation_control_per_vertex_output_components : Uint32T
+    max_tessellation_control_per_patch_output_components : Uint32T
+    max_tessellation_control_total_output_components : Uint32T
+    max_tessellation_evaluation_input_components : Uint32T
+    max_tessellation_evaluation_output_components : Uint32T
+    max_geometry_shader_invocations : Uint32T
+    max_geometry_input_components : Uint32T
+    max_geometry_output_components : Uint32T
+    max_geometry_output_vertices : Uint32T
+    max_geometry_total_output_components : Uint32T
+    max_fragment_input_components : Uint32T
+    max_fragment_output_attachments : Uint32T
+    max_fragment_dual_src_attachments : Uint32T
+    max_fragment_combined_output_resources : Uint32T
+    max_compute_shared_memory_size : Uint32T
+    max_compute_work_group_count : Uint32T[3]
+    max_compute_work_group_invocations : Uint32T
+    max_compute_work_group_size : Uint32T[3]
+    sub_pixel_precision_bits : Uint32T
+    sub_texel_precision_bits : Uint32T
+    mipmap_precision_bits : Uint32T
+    max_draw_indexed_index_value : Uint32T
+    max_draw_indirect_count : Uint32T
+    max_sampler_lod_bias : LibC::Float
+    max_sampler_anisotropy : LibC::Float
+    max_viewports : Uint32T
+    max_viewport_dimensions : Uint32T[2]
+    viewport_bounds_range : LibC::Float[2]
+    viewport_sub_pixel_bits : Uint32T
+    min_memory_map_alignment : LibC::SizeT
+    min_texel_buffer_offset_alignment : DeviceSize
+    min_uniform_buffer_offset_alignment : DeviceSize
+    min_storage_buffer_offset_alignment : DeviceSize
+    min_texel_offset : Int32T
+    max_texel_offset : Uint32T
+    min_texel_gather_offset : Int32T
+    max_texel_gather_offset : Uint32T
+    min_interpolation_offset : LibC::Float
+    max_interpolation_offset : LibC::Float
+    sub_pixel_interpolation_offset_bits : Uint32T
+    max_framebuffer_width : Uint32T
+    max_framebuffer_height : Uint32T
+    max_framebuffer_layers : Uint32T
+    framebuffer_color_sample_counts : SampleCountFlags
+    framebuffer_depth_sample_counts : SampleCountFlags
+    framebuffer_stencil_sample_counts : SampleCountFlags
+    framebuffer_no_attachments_sample_counts : SampleCountFlags
+    max_color_attachments : Uint32T
+    sampled_image_color_sample_counts : SampleCountFlags
+    sampled_image_integer_sample_counts : SampleCountFlags
+    sampled_image_depth_sample_counts : SampleCountFlags
+    sampled_image_stencil_sample_counts : SampleCountFlags
+    storage_image_sample_counts : SampleCountFlags
+    max_sample_mask_words : Uint32T
+    timestamp_compute_and_graphics : Bool32
+    timestamp_period : LibC::Float
+    max_clip_distances : Uint32T
+    max_cull_distances : Uint32T
+    max_combined_clip_and_cull_distances : Uint32T
+    discrete_queue_priorities : Uint32T
+    point_size_range : LibC::Float[2]
+    line_width_range : LibC::Float[2]
+    point_size_granularity : LibC::Float
+    line_width_granularity : LibC::Float
+    strict_lines : Bool32
+    standard_sample_locations : Bool32
+    optimal_buffer_copy_offset_alignment : DeviceSize
+    optimal_buffer_copy_row_pitch_alignment : DeviceSize
+    non_coherent_atom_size : DeviceSize
+  end
+  alias X__Int32T = LibC::Int
+  alias Int32T = X__Int32T
+  struct PhysicalDeviceSparseProperties
+    residency_standard_2d_block_shape : Bool32
+    residency_standard_2d_multisample_block_shape : Bool32
+    residency_standard_3d_block_shape : Bool32
+    residency_aligned_mip_size : Bool32
+    residency_non_resident_strict : Bool32
+  end
+  struct PhysicalDeviceProperties
+    api_version : Uint32T
+    driver_version : Uint32T
+    vendor_id : Uint32T
+    device_id : Uint32T
+    device_type : PhysicalDeviceType
+    device_name : LibC::Char[256]
+    pipeline_cache_uuid : Uint8T[16]
+    limits : PhysicalDeviceLimits
+    sparse_properties : PhysicalDeviceSparseProperties
+  end
+  alias X__Uint8T = UInt8
+  alias Uint8T = X__Uint8T
+  struct QueueFamilyProperties
+    queue_flags : QueueFlags
+    queue_count : Uint32T
+    timestamp_valid_bits : Uint32T
+    min_image_transfer_granularity : Extent3D
+  end
+  alias QueueFlags = Flags
+  struct MemoryType
+    property_flags : MemoryPropertyFlags
+    heap_index : Uint32T
+  end
+  alias MemoryPropertyFlags = Flags
+  struct MemoryHeap
+    size : DeviceSize
+    flags : MemoryHeapFlags
+  end
+  alias MemoryHeapFlags = Flags
+  struct PhysicalDeviceMemoryProperties
+    memory_type_count : Uint32T
+    memory_types : MemoryType[32]
+    memory_heap_count : Uint32T
+    memory_heaps : MemoryHeap[16]
+  end
+  struct DeviceQueueCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : DeviceQueueCreateFlags
+    queue_family_index : Uint32T
+    queue_count : Uint32T
+    p_queue_priorities : LibC::Float*
+  end
+  alias DeviceQueueCreateFlags = Flags
+  struct DeviceCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : DeviceCreateFlags
+    queue_create_info_count : Uint32T
+    p_queue_create_infos : DeviceQueueCreateInfo*
+    enabled_layer_count : Uint32T
+    pp_enabled_layer_names : LibC::Char**
+    enabled_extension_count : Uint32T
+    pp_enabled_extension_names : LibC::Char**
+    p_enabled_features : PhysicalDeviceFeatures*
+  end
+  alias DeviceCreateFlags = Flags
+  struct ExtensionProperties
+    extension_name : LibC::Char[256]
+    spec_version : Uint32T
+  end
+  struct LayerProperties
+    layer_name : LibC::Char[256]
+    spec_version : Uint32T
+    implementation_version : Uint32T
+    description : LibC::Char[256]
+  end
+  struct SubmitInfo
+    s_type : StructureType
+    p_next : Void*
+    wait_semaphore_count : Uint32T
+    p_wait_semaphores : Semaphore*
+    p_wait_dst_stage_mask : PipelineStageFlags*
+    command_buffer_count : Uint32T
+    p_command_buffers : CommandBuffer*
+    signal_semaphore_count : Uint32T
+    p_signal_semaphores : Semaphore*
+  end
+  type Semaphore = Void*
+  alias PipelineStageFlags = Flags
+  type CommandBuffer = Void*
+  struct MemoryAllocateInfo
+    s_type : StructureType
+    p_next : Void*
+    allocation_size : DeviceSize
+    memory_type_index : Uint32T
+  end
+  struct MappedMemoryRange
+    s_type : StructureType
+    p_next : Void*
+    memory : DeviceMemory
+    offset : DeviceSize
+    size : DeviceSize
+  end
+  type DeviceMemory = Void*
+  struct MemoryRequirements
+    size : DeviceSize
+    alignment : DeviceSize
+    memory_type_bits : Uint32T
+  end
+  struct SparseImageFormatProperties
+    aspect_mask : ImageAspectFlags
+    image_granularity : Extent3D
+    flags : SparseImageFormatFlags
+  end
+  alias ImageAspectFlags = Flags
+  alias SparseImageFormatFlags = Flags
+  struct SparseImageMemoryRequirements
+    format_properties : SparseImageFormatProperties
+    image_mip_tail_first_lod : Uint32T
+    image_mip_tail_size : DeviceSize
+    image_mip_tail_offset : DeviceSize
+    image_mip_tail_stride : DeviceSize
+  end
+  struct SparseMemoryBind
+    resource_offset : DeviceSize
+    size : DeviceSize
+    memory : DeviceMemory
+    memory_offset : DeviceSize
+    flags : SparseMemoryBindFlags
+  end
+  alias SparseMemoryBindFlags = Flags
+  struct SparseBufferMemoryBindInfo
+    buffer : Buffer
+    bind_count : Uint32T
+    p_binds : SparseMemoryBind*
+  end
+  type Buffer = Void*
+  struct SparseImageOpaqueMemoryBindInfo
+    image : Image
+    bind_count : Uint32T
+    p_binds : SparseMemoryBind*
+  end
+  type Image = Void*
+  struct ImageSubresource
+    aspect_mask : ImageAspectFlags
+    mip_level : Uint32T
+    array_layer : Uint32T
+  end
+  struct Offset3D
+    x : Int32T
+    y : Int32T
+    z : Int32T
+  end
+  struct SparseImageMemoryBind
+    subresource : ImageSubresource
+    offset : Offset3D
+    extent : Extent3D
+    memory : DeviceMemory
+    memory_offset : DeviceSize
+    flags : SparseMemoryBindFlags
+  end
+  struct SparseImageMemoryBindInfo
+    image : Image
+    bind_count : Uint32T
+    p_binds : SparseImageMemoryBind*
+  end
+  struct BindSparseInfo
+    s_type : StructureType
+    p_next : Void*
+    wait_semaphore_count : Uint32T
+    p_wait_semaphores : Semaphore*
+    buffer_bind_count : Uint32T
+    p_buffer_binds : SparseBufferMemoryBindInfo*
+    image_opaque_bind_count : Uint32T
+    p_image_opaque_binds : SparseImageOpaqueMemoryBindInfo*
+    image_bind_count : Uint32T
+    p_image_binds : SparseImageMemoryBindInfo*
+    signal_semaphore_count : Uint32T
+    p_signal_semaphores : Semaphore*
+  end
+  struct FenceCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : FenceCreateFlags
+  end
+  alias FenceCreateFlags = Flags
+  struct SemaphoreCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : SemaphoreCreateFlags
+  end
+  alias SemaphoreCreateFlags = Flags
+  struct EventCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : EventCreateFlags
+  end
+  alias EventCreateFlags = Flags
+  struct QueryPoolCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : QueryPoolCreateFlags
+    query_type : QueryType
+    query_count : Uint32T
+    pipeline_statistics : QueryPipelineStatisticFlags
+  end
+  alias QueryPoolCreateFlags = Flags
+  alias QueryPipelineStatisticFlags = Flags
+  struct BufferCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : BufferCreateFlags
+    size : DeviceSize
+    usage : BufferUsageFlags
+    sharing_mode : SharingMode
+    queue_family_index_count : Uint32T
+    p_queue_family_indices : Uint32T*
+  end
+  alias BufferCreateFlags = Flags
+  alias BufferUsageFlags = Flags
+  struct BufferViewCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : BufferViewCreateFlags
+    buffer : Buffer
+    format : Format
+    offset : DeviceSize
+    range : DeviceSize
+  end
+  alias BufferViewCreateFlags = Flags
+  struct ImageCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : ImageCreateFlags
+    image_type : ImageType
+    format : Format
+    extent : Extent3D
+    mip_levels : Uint32T
+    array_layers : Uint32T
+    samples : SampleCountFlagBits
+    tiling : ImageTiling
+    usage : ImageUsageFlags
+    sharing_mode : SharingMode
+    queue_family_index_count : Uint32T
+    p_queue_family_indices : Uint32T*
+    initial_layout : ImageLayout
+  end
+  alias ImageCreateFlags = Flags
+  alias ImageUsageFlags = Flags
+  struct SubresourceLayout
+    offset : DeviceSize
+    size : DeviceSize
+    row_pitch : DeviceSize
+    array_pitch : DeviceSize
+    depth_pitch : DeviceSize
+  end
+  struct ComponentMapping
+    r : ComponentSwizzle
+    g : ComponentSwizzle
+    b : ComponentSwizzle
+    a : ComponentSwizzle
+  end
+  struct ImageSubresourceRange
+    aspect_mask : ImageAspectFlags
+    base_mip_level : Uint32T
+    level_count : Uint32T
+    base_array_layer : Uint32T
+    layer_count : Uint32T
+  end
+  struct ImageViewCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : ImageViewCreateFlags
+    image : Image
+    view_type : ImageViewType
+    format : Format
+    components : ComponentMapping
+    subresource_range : ImageSubresourceRange
+  end
+  alias ImageViewCreateFlags = Flags
+  struct ShaderModuleCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : ShaderModuleCreateFlags
+    code_size : LibC::SizeT
+    p_code : Uint32T*
+  end
+  alias ShaderModuleCreateFlags = Flags
+  struct PipelineCacheCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineCacheCreateFlags
+    initial_data_size : LibC::SizeT
+    p_initial_data : Void*
+  end
+  alias PipelineCacheCreateFlags = Flags
+  struct SpecializationMapEntry
+    constant_id : Uint32T
+    offset : Uint32T
+    size : LibC::SizeT
+  end
+  struct SpecializationInfo
+    map_entry_count : Uint32T
+    p_map_entries : SpecializationMapEntry*
+    data_size : LibC::SizeT
+    p_data : Void*
+  end
+  struct PipelineShaderStageCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineShaderStageCreateFlags
+    stage : ShaderStageFlagBits
+    module : ShaderModule
+    p_name : LibC::Char*
+    p_specialization_info : SpecializationInfo*
+  end
+  alias PipelineShaderStageCreateFlags = Flags
+  type ShaderModule = Void*
+  struct VertexInputBindingDescription
+    binding : Uint32T
+    stride : Uint32T
+    input_rate : VertexInputRate
+  end
+  struct VertexInputAttributeDescription
+    location : Uint32T
+    binding : Uint32T
+    format : Format
+    offset : Uint32T
+  end
+  struct PipelineVertexInputStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineVertexInputStateCreateFlags
+    vertex_binding_description_count : Uint32T
+    p_vertex_binding_descriptions : VertexInputBindingDescription*
+    vertex_attribute_description_count : Uint32T
+    p_vertex_attribute_descriptions : VertexInputAttributeDescription*
+  end
+  alias PipelineVertexInputStateCreateFlags = Flags
+  struct PipelineInputAssemblyStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineInputAssemblyStateCreateFlags
+    topology : PrimitiveTopology
+    primitive_restart_enable : Bool32
+  end
+  alias PipelineInputAssemblyStateCreateFlags = Flags
+  struct PipelineTessellationStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineTessellationStateCreateFlags
+    patch_control_points : Uint32T
+  end
+  alias PipelineTessellationStateCreateFlags = Flags
+  struct Viewport
+    x : LibC::Float
+    y : LibC::Float
+    width : LibC::Float
+    height : LibC::Float
+    min_depth : LibC::Float
+    max_depth : LibC::Float
+  end
+  struct Offset2D
+    x : Int32T
+    y : Int32T
+  end
+  struct Extent2D
+    width : Uint32T
+    height : Uint32T
+  end
+  struct Rect2D
+    offset : Offset2D
+    extent : Extent2D
+  end
+  struct PipelineViewportStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineViewportStateCreateFlags
+    viewport_count : Uint32T
+    p_viewports : Viewport*
+    scissor_count : Uint32T
+    p_scissors : Rect2D*
+  end
+  alias PipelineViewportStateCreateFlags = Flags
+  struct PipelineRasterizationStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineRasterizationStateCreateFlags
+    depth_clamp_enable : Bool32
+    rasterizer_discard_enable : Bool32
+    polygon_mode : PolygonMode
+    cull_mode : CullModeFlags
+    front_face : FrontFace
+    depth_bias_enable : Bool32
+    depth_bias_constant_factor : LibC::Float
+    depth_bias_clamp : LibC::Float
+    depth_bias_slope_factor : LibC::Float
+    line_width : LibC::Float
+  end
+  alias PipelineRasterizationStateCreateFlags = Flags
+  alias CullModeFlags = Flags
+  struct PipelineMultisampleStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineMultisampleStateCreateFlags
+    rasterization_samples : SampleCountFlagBits
+    sample_shading_enable : Bool32
+    min_sample_shading : LibC::Float
+    p_sample_mask : SampleMask*
+    alpha_to_coverage_enable : Bool32
+    alpha_to_one_enable : Bool32
+  end
+  alias PipelineMultisampleStateCreateFlags = Flags
+  alias SampleMask = Uint32T
+  struct StencilOpState
+    fail_op : StencilOp
+    pass_op : StencilOp
+    depth_fail_op : StencilOp
+    compare_op : CompareOp
+    compare_mask : Uint32T
+    write_mask : Uint32T
+    reference : Uint32T
+  end
+  struct PipelineDepthStencilStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineDepthStencilStateCreateFlags
+    depth_test_enable : Bool32
+    depth_write_enable : Bool32
+    depth_compare_op : CompareOp
+    depth_bounds_test_enable : Bool32
+    stencil_test_enable : Bool32
+    front : StencilOpState
+    back : StencilOpState
+    min_depth_bounds : LibC::Float
+    max_depth_bounds : LibC::Float
+  end
+  alias PipelineDepthStencilStateCreateFlags = Flags
+  struct PipelineColorBlendAttachmentState
+    blend_enable : Bool32
+    src_color_blend_factor : BlendFactor
+    dst_color_blend_factor : BlendFactor
+    color_blend_op : BlendOp
+    src_alpha_blend_factor : BlendFactor
+    dst_alpha_blend_factor : BlendFactor
+    alpha_blend_op : BlendOp
+    color_write_mask : ColorComponentFlags
+  end
+  alias ColorComponentFlags = Flags
+  struct PipelineColorBlendStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineColorBlendStateCreateFlags
+    logic_op_enable : Bool32
+    logic_op : LogicOp
+    attachment_count : Uint32T
+    p_attachments : PipelineColorBlendAttachmentState*
+    blend_constants : LibC::Float[4]
+  end
+  alias PipelineColorBlendStateCreateFlags = Flags
+  struct PipelineDynamicStateCreateInfo
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineDynamicStateCreateFlags
+    dynamic_state_count : Uint32T
+    p_dynamic_states : DynamicState*
+  end
+  alias PipelineDynamicStateCreateFlags = Flags
   struct GraphicsPipelineCreateInfo
     s_type : StructureType
     p_next : Void*
@@ -1700,69 +2195,12 @@ lib Vulkan
     unnormalized_coordinates : Bool32
   end
   alias SamplerCreateFlags = Flags
-  enum Filter
-    VkFilterNearest = 0
-    VkFilterLinear = 1
-    VkFilterCubicImg = 1000015000
-    VkFilterBeginRange = 0
-    VkFilterEndRange = 1
-    VkFilterRangeSize = 2
-    VkFilterMaxEnum = 2147483647
-  end
-  enum SamplerMipmapMode
-    VkSamplerMipmapModeNearest = 0
-    VkSamplerMipmapModeLinear = 1
-    VkSamplerMipmapModeBeginRange = 0
-    VkSamplerMipmapModeEndRange = 1
-    VkSamplerMipmapModeRangeSize = 2
-    VkSamplerMipmapModeMaxEnum = 2147483647
-  end
-  enum SamplerAddressMode
-    VkSamplerAddressModeRepeat = 0
-    VkSamplerAddressModeMirroredRepeat = 1
-    VkSamplerAddressModeClampToEdge = 2
-    VkSamplerAddressModeClampToBorder = 3
-    VkSamplerAddressModeMirrorClampToEdge = 4
-    VkSamplerAddressModeBeginRange = 0
-    VkSamplerAddressModeEndRange = 3
-    VkSamplerAddressModeRangeSize = 4
-    VkSamplerAddressModeMaxEnum = 2147483647
-  end
-  enum BorderColor
-    VkBorderColorFloatTransparentBlack = 0
-    VkBorderColorIntTransparentBlack = 1
-    VkBorderColorFloatOpaqueBlack = 2
-    VkBorderColorIntOpaqueBlack = 3
-    VkBorderColorFloatOpaqueWhite = 4
-    VkBorderColorIntOpaqueWhite = 5
-    VkBorderColorBeginRange = 0
-    VkBorderColorEndRange = 5
-    VkBorderColorRangeSize = 6
-    VkBorderColorMaxEnum = 2147483647
-  end
   struct DescriptorSetLayoutBinding
     binding : Uint32T
     descriptor_type : DescriptorType
     descriptor_count : Uint32T
     stage_flags : ShaderStageFlags
     p_immutable_samplers : Sampler*
-  end
-  enum DescriptorType
-    VkDescriptorTypeSampler = 0
-    VkDescriptorTypeCombinedImageSampler = 1
-    VkDescriptorTypeSampledImage = 2
-    VkDescriptorTypeStorageImage = 3
-    VkDescriptorTypeUniformTexelBuffer = 4
-    VkDescriptorTypeStorageTexelBuffer = 5
-    VkDescriptorTypeUniformBuffer = 6
-    VkDescriptorTypeStorageBuffer = 7
-    VkDescriptorTypeUniformBufferDynamic = 8
-    VkDescriptorTypeStorageBufferDynamic = 9
-    VkDescriptorTypeInputAttachment = 10
-    VkDescriptorTypeBeginRange = 0
-    VkDescriptorTypeEndRange = 10
-    VkDescriptorTypeRangeSize = 11
-    VkDescriptorTypeMaxEnum = 2147483647
   end
   type Sampler = Void*
   struct DescriptorSetLayoutCreateInfo
@@ -1854,23 +2292,6 @@ lib Vulkan
     final_layout : ImageLayout
   end
   alias AttachmentDescriptionFlags = Flags
-  enum AttachmentLoadOp
-    VkAttachmentLoadOpLoad = 0
-    VkAttachmentLoadOpClear = 1
-    VkAttachmentLoadOpDontCare = 2
-    VkAttachmentLoadOpBeginRange = 0
-    VkAttachmentLoadOpEndRange = 2
-    VkAttachmentLoadOpRangeSize = 3
-    VkAttachmentLoadOpMaxEnum = 2147483647
-  end
-  enum AttachmentStoreOp
-    VkAttachmentStoreOpStore = 0
-    VkAttachmentStoreOpDontCare = 1
-    VkAttachmentStoreOpBeginRange = 0
-    VkAttachmentStoreOpEndRange = 1
-    VkAttachmentStoreOpRangeSize = 2
-    VkAttachmentStoreOpMaxEnum = 2147483647
-  end
   struct AttachmentReference
     attachment : Uint32T
     layout : ImageLayout
@@ -1888,14 +2309,6 @@ lib Vulkan
     p_preserve_attachments : Uint32T*
   end
   alias SubpassDescriptionFlags = Flags
-  enum PipelineBindPoint
-    VkPipelineBindPointGraphics = 0
-    VkPipelineBindPointCompute = 1
-    VkPipelineBindPointBeginRange = 0
-    VkPipelineBindPointEndRange = 1
-    VkPipelineBindPointRangeSize = 2
-    VkPipelineBindPointMaxEnum = 2147483647
-  end
   struct SubpassDependency
     src_subpass : Uint32T
     dst_subpass : Uint32T
@@ -1934,14 +2347,6 @@ lib Vulkan
     command_buffer_count : Uint32T
   end
   type CommandPool = Void*
-  enum CommandBufferLevel
-    VkCommandBufferLevelPrimary = 0
-    VkCommandBufferLevelSecondary = 1
-    VkCommandBufferLevelBeginRange = 0
-    VkCommandBufferLevelEndRange = 1
-    VkCommandBufferLevelRangeSize = 2
-    VkCommandBufferLevelMaxEnum = 2147483647
-  end
   struct CommandBufferInheritanceInfo
     s_type : StructureType
     p_next : Void*
@@ -2089,43 +2494,6 @@ lib Vulkan
   end
   fun create_instance = vkCreateInstance(p_create_info : InstanceCreateInfo*, p_allocator : AllocationCallbacks*, p_instance : Instance*) : Result
   type Instance = Void*
-  enum Result
-    VkSuccess = 0
-    VkNotReady = 1
-    VkTimeout = 2
-    VkEventSet = 3
-    VkEventReset = 4
-    VkIncomplete = 5
-    VkErrorOutOfHostMemory = -1
-    VkErrorOutOfDeviceMemory = -2
-    VkErrorInitializationFailed = -3
-    VkErrorDeviceLost = -4
-    VkErrorMemoryMapFailed = -5
-    VkErrorLayerNotPresent = -6
-    VkErrorExtensionNotPresent = -7
-    VkErrorFeatureNotPresent = -8
-    VkErrorIncompatibleDriver = -9
-    VkErrorTooManyObjects = -10
-    VkErrorFormatNotSupported = -11
-    VkErrorFragmentedPool = -12
-    VkErrorOutOfPoolMemory = -1000069000
-    VkErrorInvalidExternalHandle = -1000072003
-    VkErrorSurfaceLostKhr = -1000000000
-    VkErrorNativeWindowInUseKhr = -1000000001
-    VkSuboptimalKhr = 1000001003
-    VkErrorOutOfDateKhr = -1000001004
-    VkErrorIncompatibleDisplayKhr = -1000003001
-    VkErrorValidationFailedExt = -1000011001
-    VkErrorInvalidShaderNv = -1000012000
-    VkErrorFragmentationExt = -1000161000
-    VkErrorNotPermittedExt = -1000174001
-    VkErrorOutOfPoolMemoryKhr = -1000069000
-    VkErrorInvalidExternalHandleKhr = -1000072003
-    VkResultBeginRange = -12
-    VkResultEndRange = 5
-    VkResultRangeSize = 18
-    VkResultMaxEnum = 2147483647
-  end
   fun destroy_instance = vkDestroyInstance(instance : Instance, p_allocator : AllocationCallbacks*)
   fun enumerate_physical_devices = vkEnumeratePhysicalDevices(instance : Instance, p_physical_device_count : Uint32T*, p_physical_devices : PhysicalDevice*) : Result
   type PhysicalDevice = Void*
@@ -2244,14 +2612,6 @@ lib Vulkan
   fun cmd_set_stencil_reference = vkCmdSetStencilReference(command_buffer : CommandBuffer, face_mask : StencilFaceFlags, reference : Uint32T)
   fun cmd_bind_descriptor_sets = vkCmdBindDescriptorSets(command_buffer : CommandBuffer, pipeline_bind_point : PipelineBindPoint, layout : PipelineLayout, first_set : Uint32T, descriptor_set_count : Uint32T, p_descriptor_sets : DescriptorSet*, dynamic_offset_count : Uint32T, p_dynamic_offsets : Uint32T*)
   fun cmd_bind_index_buffer = vkCmdBindIndexBuffer(command_buffer : CommandBuffer, buffer : Buffer, offset : DeviceSize, index_type : IndexType)
-  enum IndexType
-    VkIndexTypeUint16 = 0
-    VkIndexTypeUint32 = 1
-    VkIndexTypeBeginRange = 0
-    VkIndexTypeEndRange = 1
-    VkIndexTypeRangeSize = 2
-    VkIndexTypeMaxEnum = 2147483647
-  end
   fun cmd_bind_vertex_buffers = vkCmdBindVertexBuffers(command_buffer : CommandBuffer, first_binding : Uint32T, binding_count : Uint32T, p_buffers : Buffer*, p_offsets : DeviceSize*)
   fun cmd_draw = vkCmdDraw(command_buffer : CommandBuffer, vertex_count : Uint32T, instance_count : Uint32T, first_vertex : Uint32T, first_instance : Uint32T)
   fun cmd_draw_indexed = vkCmdDrawIndexed(command_buffer : CommandBuffer, index_count : Uint32T, instance_count : Uint32T, first_index : Uint32T, vertex_offset : Int32T, first_instance : Uint32T)
@@ -2278,44 +2638,185 @@ lib Vulkan
   fun cmd_end_query = vkCmdEndQuery(command_buffer : CommandBuffer, query_pool : QueryPool, query : Uint32T)
   fun cmd_reset_query_pool = vkCmdResetQueryPool(command_buffer : CommandBuffer, query_pool : QueryPool, first_query : Uint32T, query_count : Uint32T)
   fun cmd_write_timestamp = vkCmdWriteTimestamp(command_buffer : CommandBuffer, pipeline_stage : PipelineStageFlagBits, query_pool : QueryPool, query : Uint32T)
-  enum PipelineStageFlagBits
-    VkPipelineStageTopOfPipeBit = 1
-    VkPipelineStageDrawIndirectBit = 2
-    VkPipelineStageVertexInputBit = 4
-    VkPipelineStageVertexShaderBit = 8
-    VkPipelineStageTessellationControlShaderBit = 16
-    VkPipelineStageTessellationEvaluationShaderBit = 32
-    VkPipelineStageGeometryShaderBit = 64
-    VkPipelineStageFragmentShaderBit = 128
-    VkPipelineStageEarlyFragmentTestsBit = 256
-    VkPipelineStageLateFragmentTestsBit = 512
-    VkPipelineStageColorAttachmentOutputBit = 1024
-    VkPipelineStageComputeShaderBit = 2048
-    VkPipelineStageTransferBit = 4096
-    VkPipelineStageBottomOfPipeBit = 8192
-    VkPipelineStageHostBit = 16384
-    VkPipelineStageAllGraphicsBit = 32768
-    VkPipelineStageAllCommandsBit = 65536
-    VkPipelineStageConditionalRenderingBitExt = 262144
-    VkPipelineStageCommandProcessBitNvx = 131072
-    VkPipelineStageFlagBitsMaxEnum = 2147483647
-  end
   fun cmd_copy_query_pool_results = vkCmdCopyQueryPoolResults(command_buffer : CommandBuffer, query_pool : QueryPool, first_query : Uint32T, query_count : Uint32T, dst_buffer : Buffer, dst_offset : DeviceSize, stride : DeviceSize, flags : QueryResultFlags)
   fun cmd_push_constants = vkCmdPushConstants(command_buffer : CommandBuffer, layout : PipelineLayout, stage_flags : ShaderStageFlags, offset : Uint32T, size : Uint32T, p_values : Void*)
   fun cmd_begin_render_pass = vkCmdBeginRenderPass(command_buffer : CommandBuffer, p_render_pass_begin : RenderPassBeginInfo*, contents : SubpassContents)
-  enum SubpassContents
-    VkSubpassContentsInline = 0
-    VkSubpassContentsSecondaryCommandBuffers = 1
-    VkSubpassContentsBeginRange = 0
-    VkSubpassContentsEndRange = 1
-    VkSubpassContentsRangeSize = 2
-    VkSubpassContentsMaxEnum = 2147483647
-  end
   fun cmd_next_subpass = vkCmdNextSubpass(command_buffer : CommandBuffer, contents : SubpassContents)
   fun cmd_end_render_pass = vkCmdEndRenderPass(command_buffer : CommandBuffer)
   fun cmd_execute_commands = vkCmdExecuteCommands(command_buffer : CommandBuffer, command_buffer_count : Uint32T, p_command_buffers : CommandBuffer*)
   alias SamplerYcbcrConversionT = Void
   alias DescriptorUpdateTemplateT = Void
+  enum PointClippingBehavior
+    VkPointClippingBehaviorAllClipPlanes = 0
+    VkPointClippingBehaviorUserClipPlanesOnly = 1
+    VkPointClippingBehaviorAllClipPlanesKhr = 0
+    VkPointClippingBehaviorUserClipPlanesOnlyKhr = 1
+    VkPointClippingBehaviorBeginRange = 0
+    VkPointClippingBehaviorEndRange = 1
+    VkPointClippingBehaviorRangeSize = 2
+    VkPointClippingBehaviorMaxEnum = 2147483647
+  end
+  enum TessellationDomainOrigin
+    VkTessellationDomainOriginUpperLeft = 0
+    VkTessellationDomainOriginLowerLeft = 1
+    VkTessellationDomainOriginUpperLeftKhr = 0
+    VkTessellationDomainOriginLowerLeftKhr = 1
+    VkTessellationDomainOriginBeginRange = 0
+    VkTessellationDomainOriginEndRange = 1
+    VkTessellationDomainOriginRangeSize = 2
+    VkTessellationDomainOriginMaxEnum = 2147483647
+  end
+  enum SamplerYcbcrModelConversion
+    VkSamplerYcbcrModelConversionRgbIdentity = 0
+    VkSamplerYcbcrModelConversionYcbcrIdentity = 1
+    VkSamplerYcbcrModelConversionYcbcr709 = 2
+    VkSamplerYcbcrModelConversionYcbcr601 = 3
+    VkSamplerYcbcrModelConversionYcbcr2020 = 4
+    VkSamplerYcbcrModelConversionRgbIdentityKhr = 0
+    VkSamplerYcbcrModelConversionYcbcrIdentityKhr = 1
+    VkSamplerYcbcrModelConversionYcbcr709Khr = 2
+    VkSamplerYcbcrModelConversionYcbcr601Khr = 3
+    VkSamplerYcbcrModelConversionYcbcr2020Khr = 4
+    VkSamplerYcbcrModelConversionBeginRange = 0
+    VkSamplerYcbcrModelConversionEndRange = 4
+    VkSamplerYcbcrModelConversionRangeSize = 5
+    VkSamplerYcbcrModelConversionMaxEnum = 2147483647
+  end
+  enum SamplerYcbcrRange
+    VkSamplerYcbcrRangeItuFull = 0
+    VkSamplerYcbcrRangeItuNarrow = 1
+    VkSamplerYcbcrRangeItuFullKhr = 0
+    VkSamplerYcbcrRangeItuNarrowKhr = 1
+    VkSamplerYcbcrRangeBeginRange = 0
+    VkSamplerYcbcrRangeEndRange = 1
+    VkSamplerYcbcrRangeRangeSize = 2
+    VkSamplerYcbcrRangeMaxEnum = 2147483647
+  end
+  enum ChromaLocation
+    VkChromaLocationCositedEven = 0
+    VkChromaLocationMidpoint = 1
+    VkChromaLocationCositedEvenKhr = 0
+    VkChromaLocationMidpointKhr = 1
+    VkChromaLocationBeginRange = 0
+    VkChromaLocationEndRange = 1
+    VkChromaLocationRangeSize = 2
+    VkChromaLocationMaxEnum = 2147483647
+  end
+  enum DescriptorUpdateTemplateType
+    VkDescriptorUpdateTemplateTypeDescriptorSet = 0
+    VkDescriptorUpdateTemplateTypePushDescriptorsKhr = 1
+    VkDescriptorUpdateTemplateTypeDescriptorSetKhr = 0
+    VkDescriptorUpdateTemplateTypeBeginRange = 0
+    VkDescriptorUpdateTemplateTypeEndRange = 0
+    VkDescriptorUpdateTemplateTypeRangeSize = 1
+    VkDescriptorUpdateTemplateTypeMaxEnum = 2147483647
+  end
+  enum SubgroupFeatureFlagBits
+    VkSubgroupFeatureBasicBit = 1
+    VkSubgroupFeatureVoteBit = 2
+    VkSubgroupFeatureArithmeticBit = 4
+    VkSubgroupFeatureBallotBit = 8
+    VkSubgroupFeatureShuffleBit = 16
+    VkSubgroupFeatureShuffleRelativeBit = 32
+    VkSubgroupFeatureClusteredBit = 64
+    VkSubgroupFeatureQuadBit = 128
+    VkSubgroupFeaturePartitionedBitNv = 256
+    VkSubgroupFeatureFlagBitsMaxEnum = 2147483647
+  end
+  enum PeerMemoryFeatureFlagBits
+    VkPeerMemoryFeatureCopySrcBit = 1
+    VkPeerMemoryFeatureCopyDstBit = 2
+    VkPeerMemoryFeatureGenericSrcBit = 4
+    VkPeerMemoryFeatureGenericDstBit = 8
+    VkPeerMemoryFeatureCopySrcBitKhr = 1
+    VkPeerMemoryFeatureCopyDstBitKhr = 2
+    VkPeerMemoryFeatureGenericSrcBitKhr = 4
+    VkPeerMemoryFeatureGenericDstBitKhr = 8
+    VkPeerMemoryFeatureFlagBitsMaxEnum = 2147483647
+  end
+  enum MemoryAllocateFlagBits
+    VkMemoryAllocateDeviceMaskBit = 1
+    VkMemoryAllocateDeviceMaskBitKhr = 1
+    VkMemoryAllocateFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalMemoryHandleTypeFlagBits
+    VkExternalMemoryHandleTypeOpaqueFdBit = 1
+    VkExternalMemoryHandleTypeOpaqueWin32Bit = 2
+    VkExternalMemoryHandleTypeOpaqueWin32KmtBit = 4
+    VkExternalMemoryHandleTypeD3D11TextureBit = 8
+    VkExternalMemoryHandleTypeD3D11TextureKmtBit = 16
+    VkExternalMemoryHandleTypeD3D12HeapBit = 32
+    VkExternalMemoryHandleTypeD3D12ResourceBit = 64
+    VkExternalMemoryHandleTypeDmaBufBitExt = 512
+    VkExternalMemoryHandleTypeAndroidHardwareBufferBitAndroid = 1024
+    VkExternalMemoryHandleTypeHostAllocationBitExt = 128
+    VkExternalMemoryHandleTypeHostMappedForeignMemoryBitExt = 256
+    VkExternalMemoryHandleTypeOpaqueFdBitKhr = 1
+    VkExternalMemoryHandleTypeOpaqueWin32BitKhr = 2
+    VkExternalMemoryHandleTypeOpaqueWin32KmtBitKhr = 4
+    VkExternalMemoryHandleTypeD3D11TextureBitKhr = 8
+    VkExternalMemoryHandleTypeD3D11TextureKmtBitKhr = 16
+    VkExternalMemoryHandleTypeD3D12HeapBitKhr = 32
+    VkExternalMemoryHandleTypeD3D12ResourceBitKhr = 64
+    VkExternalMemoryHandleTypeFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalMemoryFeatureFlagBits
+    VkExternalMemoryFeatureDedicatedOnlyBit = 1
+    VkExternalMemoryFeatureExportableBit = 2
+    VkExternalMemoryFeatureImportableBit = 4
+    VkExternalMemoryFeatureDedicatedOnlyBitKhr = 1
+    VkExternalMemoryFeatureExportableBitKhr = 2
+    VkExternalMemoryFeatureImportableBitKhr = 4
+    VkExternalMemoryFeatureFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalFenceHandleTypeFlagBits
+    VkExternalFenceHandleTypeOpaqueFdBit = 1
+    VkExternalFenceHandleTypeOpaqueWin32Bit = 2
+    VkExternalFenceHandleTypeOpaqueWin32KmtBit = 4
+    VkExternalFenceHandleTypeSyncFdBit = 8
+    VkExternalFenceHandleTypeOpaqueFdBitKhr = 1
+    VkExternalFenceHandleTypeOpaqueWin32BitKhr = 2
+    VkExternalFenceHandleTypeOpaqueWin32KmtBitKhr = 4
+    VkExternalFenceHandleTypeSyncFdBitKhr = 8
+    VkExternalFenceHandleTypeFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalFenceFeatureFlagBits
+    VkExternalFenceFeatureExportableBit = 1
+    VkExternalFenceFeatureImportableBit = 2
+    VkExternalFenceFeatureExportableBitKhr = 1
+    VkExternalFenceFeatureImportableBitKhr = 2
+    VkExternalFenceFeatureFlagBitsMaxEnum = 2147483647
+  end
+  enum FenceImportFlagBits
+    VkFenceImportTemporaryBit = 1
+    VkFenceImportTemporaryBitKhr = 1
+    VkFenceImportFlagBitsMaxEnum = 2147483647
+  end
+  enum SemaphoreImportFlagBits
+    VkSemaphoreImportTemporaryBit = 1
+    VkSemaphoreImportTemporaryBitKhr = 1
+    VkSemaphoreImportFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalSemaphoreHandleTypeFlagBits
+    VkExternalSemaphoreHandleTypeOpaqueFdBit = 1
+    VkExternalSemaphoreHandleTypeOpaqueWin32Bit = 2
+    VkExternalSemaphoreHandleTypeOpaqueWin32KmtBit = 4
+    VkExternalSemaphoreHandleTypeD3D12FenceBit = 8
+    VkExternalSemaphoreHandleTypeSyncFdBit = 16
+    VkExternalSemaphoreHandleTypeOpaqueFdBitKhr = 1
+    VkExternalSemaphoreHandleTypeOpaqueWin32BitKhr = 2
+    VkExternalSemaphoreHandleTypeOpaqueWin32KmtBitKhr = 4
+    VkExternalSemaphoreHandleTypeD3D12FenceBitKhr = 8
+    VkExternalSemaphoreHandleTypeSyncFdBitKhr = 16
+    VkExternalSemaphoreHandleTypeFlagBitsMaxEnum = 2147483647
+  end
+  enum ExternalSemaphoreFeatureFlagBits
+    VkExternalSemaphoreFeatureExportableBit = 1
+    VkExternalSemaphoreFeatureImportableBit = 2
+    VkExternalSemaphoreFeatureExportableBitKhr = 1
+    VkExternalSemaphoreFeatureImportableBitKhr = 2
+    VkExternalSemaphoreFeatureFlagBitsMaxEnum = 2147483647
+  end
   struct PhysicalDeviceSubgroupProperties
     s_type : StructureType
     p_next : Void*
@@ -2504,16 +3005,6 @@ lib Vulkan
     p_next : Void*
     point_clipping_behavior : PointClippingBehavior
   end
-  enum PointClippingBehavior
-    VkPointClippingBehaviorAllClipPlanes = 0
-    VkPointClippingBehaviorUserClipPlanesOnly = 1
-    VkPointClippingBehaviorAllClipPlanesKhr = 0
-    VkPointClippingBehaviorUserClipPlanesOnlyKhr = 1
-    VkPointClippingBehaviorBeginRange = 0
-    VkPointClippingBehaviorEndRange = 1
-    VkPointClippingBehaviorRangeSize = 2
-    VkPointClippingBehaviorMaxEnum = 2147483647
-  end
   struct InputAttachmentAspectReference
     subpass : Uint32T
     input_attachment_index : Uint32T
@@ -2534,16 +3025,6 @@ lib Vulkan
     s_type : StructureType
     p_next : Void*
     domain_origin : TessellationDomainOrigin
-  end
-  enum TessellationDomainOrigin
-    VkTessellationDomainOriginUpperLeft = 0
-    VkTessellationDomainOriginLowerLeft = 1
-    VkTessellationDomainOriginUpperLeftKhr = 0
-    VkTessellationDomainOriginLowerLeftKhr = 1
-    VkTessellationDomainOriginBeginRange = 0
-    VkTessellationDomainOriginEndRange = 1
-    VkTessellationDomainOriginRangeSize = 2
-    VkTessellationDomainOriginMaxEnum = 2147483647
   end
   struct RenderPassMultiviewCreateInfo
     s_type : StructureType
@@ -2608,42 +3089,6 @@ lib Vulkan
     chroma_filter : Filter
     force_explicit_reconstruction : Bool32
   end
-  enum SamplerYcbcrModelConversion
-    VkSamplerYcbcrModelConversionRgbIdentity = 0
-    VkSamplerYcbcrModelConversionYcbcrIdentity = 1
-    VkSamplerYcbcrModelConversionYcbcr709 = 2
-    VkSamplerYcbcrModelConversionYcbcr601 = 3
-    VkSamplerYcbcrModelConversionYcbcr2020 = 4
-    VkSamplerYcbcrModelConversionRgbIdentityKhr = 0
-    VkSamplerYcbcrModelConversionYcbcrIdentityKhr = 1
-    VkSamplerYcbcrModelConversionYcbcr709Khr = 2
-    VkSamplerYcbcrModelConversionYcbcr601Khr = 3
-    VkSamplerYcbcrModelConversionYcbcr2020Khr = 4
-    VkSamplerYcbcrModelConversionBeginRange = 0
-    VkSamplerYcbcrModelConversionEndRange = 4
-    VkSamplerYcbcrModelConversionRangeSize = 5
-    VkSamplerYcbcrModelConversionMaxEnum = 2147483647
-  end
-  enum SamplerYcbcrRange
-    VkSamplerYcbcrRangeItuFull = 0
-    VkSamplerYcbcrRangeItuNarrow = 1
-    VkSamplerYcbcrRangeItuFullKhr = 0
-    VkSamplerYcbcrRangeItuNarrowKhr = 1
-    VkSamplerYcbcrRangeBeginRange = 0
-    VkSamplerYcbcrRangeEndRange = 1
-    VkSamplerYcbcrRangeRangeSize = 2
-    VkSamplerYcbcrRangeMaxEnum = 2147483647
-  end
-  enum ChromaLocation
-    VkChromaLocationCositedEven = 0
-    VkChromaLocationMidpoint = 1
-    VkChromaLocationCositedEvenKhr = 0
-    VkChromaLocationMidpointKhr = 1
-    VkChromaLocationBeginRange = 0
-    VkChromaLocationEndRange = 1
-    VkChromaLocationRangeSize = 2
-    VkChromaLocationMaxEnum = 2147483647
-  end
   struct SamplerYcbcrConversionInfo
     s_type : StructureType
     p_next : Void*
@@ -2654,19 +3099,6 @@ lib Vulkan
     s_type : StructureType
     p_next : Void*
     plane_aspect : ImageAspectFlagBits
-  end
-  enum ImageAspectFlagBits
-    VkImageAspectColorBit = 1
-    VkImageAspectDepthBit = 2
-    VkImageAspectStencilBit = 4
-    VkImageAspectMetadataBit = 8
-    VkImageAspectPlane0Bit = 16
-    VkImageAspectPlane1Bit = 32
-    VkImageAspectPlane2Bit = 64
-    VkImageAspectPlane0BitKhr = 16
-    VkImageAspectPlane1BitKhr = 32
-    VkImageAspectPlane2BitKhr = 64
-    VkImageAspectFlagBitsMaxEnum = 2147483647
   end
   struct ImagePlaneMemoryRequirementsInfo
     s_type : StructureType
@@ -2704,15 +3136,6 @@ lib Vulkan
     set : Uint32T
   end
   alias DescriptorUpdateTemplateCreateFlags = Flags
-  enum DescriptorUpdateTemplateType
-    VkDescriptorUpdateTemplateTypeDescriptorSet = 0
-    VkDescriptorUpdateTemplateTypePushDescriptorsKhr = 1
-    VkDescriptorUpdateTemplateTypeDescriptorSetKhr = 0
-    VkDescriptorUpdateTemplateTypeBeginRange = 0
-    VkDescriptorUpdateTemplateTypeEndRange = 0
-    VkDescriptorUpdateTemplateTypeRangeSize = 1
-    VkDescriptorUpdateTemplateTypeMaxEnum = 2147483647
-  end
   struct ExternalMemoryProperties
     external_memory_features : ExternalMemoryFeatureFlags
     export_from_imported_handle_types : ExternalMemoryHandleTypeFlags
@@ -2724,27 +3147,6 @@ lib Vulkan
     s_type : StructureType
     p_next : Void*
     handle_type : ExternalMemoryHandleTypeFlagBits
-  end
-  enum ExternalMemoryHandleTypeFlagBits
-    VkExternalMemoryHandleTypeOpaqueFdBit = 1
-    VkExternalMemoryHandleTypeOpaqueWin32Bit = 2
-    VkExternalMemoryHandleTypeOpaqueWin32KmtBit = 4
-    VkExternalMemoryHandleTypeD3D11TextureBit = 8
-    VkExternalMemoryHandleTypeD3D11TextureKmtBit = 16
-    VkExternalMemoryHandleTypeD3D12HeapBit = 32
-    VkExternalMemoryHandleTypeD3D12ResourceBit = 64
-    VkExternalMemoryHandleTypeDmaBufBitExt = 512
-    VkExternalMemoryHandleTypeAndroidHardwareBufferBitAndroid = 1024
-    VkExternalMemoryHandleTypeHostAllocationBitExt = 128
-    VkExternalMemoryHandleTypeHostMappedForeignMemoryBitExt = 256
-    VkExternalMemoryHandleTypeOpaqueFdBitKhr = 1
-    VkExternalMemoryHandleTypeOpaqueWin32BitKhr = 2
-    VkExternalMemoryHandleTypeOpaqueWin32KmtBitKhr = 4
-    VkExternalMemoryHandleTypeD3D11TextureBitKhr = 8
-    VkExternalMemoryHandleTypeD3D11TextureKmtBitKhr = 16
-    VkExternalMemoryHandleTypeD3D12HeapBitKhr = 32
-    VkExternalMemoryHandleTypeD3D12ResourceBitKhr = 64
-    VkExternalMemoryHandleTypeFlagBitsMaxEnum = 2147483647
   end
   struct ExternalImageFormatProperties
     s_type : StructureType
@@ -2792,17 +3194,6 @@ lib Vulkan
     p_next : Void*
     handle_type : ExternalFenceHandleTypeFlagBits
   end
-  enum ExternalFenceHandleTypeFlagBits
-    VkExternalFenceHandleTypeOpaqueFdBit = 1
-    VkExternalFenceHandleTypeOpaqueWin32Bit = 2
-    VkExternalFenceHandleTypeOpaqueWin32KmtBit = 4
-    VkExternalFenceHandleTypeSyncFdBit = 8
-    VkExternalFenceHandleTypeOpaqueFdBitKhr = 1
-    VkExternalFenceHandleTypeOpaqueWin32BitKhr = 2
-    VkExternalFenceHandleTypeOpaqueWin32KmtBitKhr = 4
-    VkExternalFenceHandleTypeSyncFdBitKhr = 8
-    VkExternalFenceHandleTypeFlagBitsMaxEnum = 2147483647
-  end
   struct ExternalFenceProperties
     s_type : StructureType
     p_next : Void*
@@ -2827,19 +3218,6 @@ lib Vulkan
     s_type : StructureType
     p_next : Void*
     handle_type : ExternalSemaphoreHandleTypeFlagBits
-  end
-  enum ExternalSemaphoreHandleTypeFlagBits
-    VkExternalSemaphoreHandleTypeOpaqueFdBit = 1
-    VkExternalSemaphoreHandleTypeOpaqueWin32Bit = 2
-    VkExternalSemaphoreHandleTypeOpaqueWin32KmtBit = 4
-    VkExternalSemaphoreHandleTypeD3D12FenceBit = 8
-    VkExternalSemaphoreHandleTypeSyncFdBit = 16
-    VkExternalSemaphoreHandleTypeOpaqueFdBitKhr = 1
-    VkExternalSemaphoreHandleTypeOpaqueWin32BitKhr = 2
-    VkExternalSemaphoreHandleTypeOpaqueWin32KmtBitKhr = 4
-    VkExternalSemaphoreHandleTypeD3D12FenceBitKhr = 8
-    VkExternalSemaphoreHandleTypeSyncFdBitKhr = 16
-    VkExternalSemaphoreHandleTypeFlagBitsMaxEnum = 2147483647
   end
   struct ExternalSemaphoreProperties
     s_type : StructureType
@@ -2897,36 +3275,6 @@ lib Vulkan
   fun get_physical_device_external_semaphore_properties = vkGetPhysicalDeviceExternalSemaphoreProperties(physical_device : PhysicalDevice, p_external_semaphore_info : PhysicalDeviceExternalSemaphoreInfo*, p_external_semaphore_properties : ExternalSemaphoreProperties*)
   fun get_descriptor_set_layout_support = vkGetDescriptorSetLayoutSupport(device : Device, p_create_info : DescriptorSetLayoutCreateInfo*, p_support : DescriptorSetLayoutSupport*)
   alias SurfaceKhrT = Void
-  struct SurfaceCapabilitiesKhr
-    min_image_count : Uint32T
-    max_image_count : Uint32T
-    current_extent : Extent2D
-    min_image_extent : Extent2D
-    max_image_extent : Extent2D
-    max_image_array_layers : Uint32T
-    supported_transforms : SurfaceTransformFlagsKhr
-    current_transform : SurfaceTransformFlagBitsKhr
-    supported_composite_alpha : CompositeAlphaFlagsKhr
-    supported_usage_flags : ImageUsageFlags
-  end
-  alias SurfaceTransformFlagsKhr = Flags
-  enum SurfaceTransformFlagBitsKhr
-    VkSurfaceTransformIdentityBitKhr = 1
-    VkSurfaceTransformRotate90BitKhr = 2
-    VkSurfaceTransformRotate180BitKhr = 4
-    VkSurfaceTransformRotate270BitKhr = 8
-    VkSurfaceTransformHorizontalMirrorBitKhr = 16
-    VkSurfaceTransformHorizontalMirrorRotate90BitKhr = 32
-    VkSurfaceTransformHorizontalMirrorRotate180BitKhr = 64
-    VkSurfaceTransformHorizontalMirrorRotate270BitKhr = 128
-    VkSurfaceTransformInheritBitKhr = 256
-    VkSurfaceTransformFlagBitsMaxEnumKhr = 2147483647
-  end
-  alias CompositeAlphaFlagsKhr = Flags
-  struct SurfaceFormatKhr
-    format : Format
-    color_space : ColorSpaceKhr
-  end
   enum ColorSpaceKhr
     VkColorSpaceSrgbNonlinearKhr = 0
     VkColorSpaceDisplayP3NonlinearExt = 1000104001
@@ -2948,12 +3296,6 @@ lib Vulkan
     VkColorSpaceRangeSizeKhr = 1
     VkColorSpaceMaxEnumKhr = 2147483647
   end
-  fun destroy_surface_khr = vkDestroySurfaceKHR(instance : Instance, surface : SurfaceKhr, p_allocator : AllocationCallbacks*)
-  type SurfaceKhr = Void*
-  fun get_physical_device_surface_support_khr = vkGetPhysicalDeviceSurfaceSupportKHR(physical_device : PhysicalDevice, queue_family_index : Uint32T, surface : SurfaceKhr, p_supported : Bool32*) : Result
-  fun get_physical_device_surface_capabilities_khr = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_surface_capabilities : SurfaceCapabilitiesKhr*) : Result
-  fun get_physical_device_surface_formats_khr = vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_surface_format_count : Uint32T*, p_surface_formats : SurfaceFormatKhr*) : Result
-  fun get_physical_device_surface_present_modes_khr = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_present_mode_count : Uint32T*, p_present_modes : PresentModeKhr*) : Result
   enum PresentModeKhr
     VkPresentModeImmediateKhr = 0
     VkPresentModeMailboxKhr = 1
@@ -2966,7 +3308,62 @@ lib Vulkan
     VkPresentModeRangeSizeKhr = 4
     VkPresentModeMaxEnumKhr = 2147483647
   end
+  enum SurfaceTransformFlagBitsKhr
+    VkSurfaceTransformIdentityBitKhr = 1
+    VkSurfaceTransformRotate90BitKhr = 2
+    VkSurfaceTransformRotate180BitKhr = 4
+    VkSurfaceTransformRotate270BitKhr = 8
+    VkSurfaceTransformHorizontalMirrorBitKhr = 16
+    VkSurfaceTransformHorizontalMirrorRotate90BitKhr = 32
+    VkSurfaceTransformHorizontalMirrorRotate180BitKhr = 64
+    VkSurfaceTransformHorizontalMirrorRotate270BitKhr = 128
+    VkSurfaceTransformInheritBitKhr = 256
+    VkSurfaceTransformFlagBitsMaxEnumKhr = 2147483647
+  end
+  enum CompositeAlphaFlagBitsKhr
+    VkCompositeAlphaOpaqueBitKhr = 1
+    VkCompositeAlphaPreMultipliedBitKhr = 2
+    VkCompositeAlphaPostMultipliedBitKhr = 4
+    VkCompositeAlphaInheritBitKhr = 8
+    VkCompositeAlphaFlagBitsMaxEnumKhr = 2147483647
+  end
+  struct SurfaceCapabilitiesKhr
+    min_image_count : Uint32T
+    max_image_count : Uint32T
+    current_extent : Extent2D
+    min_image_extent : Extent2D
+    max_image_extent : Extent2D
+    max_image_array_layers : Uint32T
+    supported_transforms : SurfaceTransformFlagsKhr
+    current_transform : SurfaceTransformFlagBitsKhr
+    supported_composite_alpha : CompositeAlphaFlagsKhr
+    supported_usage_flags : ImageUsageFlags
+  end
+  alias SurfaceTransformFlagsKhr = Flags
+  alias CompositeAlphaFlagsKhr = Flags
+  struct SurfaceFormatKhr
+    format : Format
+    color_space : ColorSpaceKhr
+  end
+  fun destroy_surface_khr = vkDestroySurfaceKHR(instance : Instance, surface : SurfaceKhr, p_allocator : AllocationCallbacks*)
+  type SurfaceKhr = Void*
+  fun get_physical_device_surface_support_khr = vkGetPhysicalDeviceSurfaceSupportKHR(physical_device : PhysicalDevice, queue_family_index : Uint32T, surface : SurfaceKhr, p_supported : Bool32*) : Result
+  fun get_physical_device_surface_capabilities_khr = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_surface_capabilities : SurfaceCapabilitiesKhr*) : Result
+  fun get_physical_device_surface_formats_khr = vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_surface_format_count : Uint32T*, p_surface_formats : SurfaceFormatKhr*) : Result
+  fun get_physical_device_surface_present_modes_khr = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device : PhysicalDevice, surface : SurfaceKhr, p_present_mode_count : Uint32T*, p_present_modes : PresentModeKhr*) : Result
   alias SwapchainKhrT = Void
+  enum SwapchainCreateFlagBitsKhr
+    VkSwapchainCreateSplitInstanceBindRegionsBitKhr = 1
+    VkSwapchainCreateProtectedBitKhr = 2
+    VkSwapchainCreateFlagBitsMaxEnumKhr = 2147483647
+  end
+  enum DeviceGroupPresentModeFlagBitsKhr
+    VkDeviceGroupPresentModeLocalBitKhr = 1
+    VkDeviceGroupPresentModeRemoteBitKhr = 2
+    VkDeviceGroupPresentModeSumBitKhr = 4
+    VkDeviceGroupPresentModeLocalMultiDeviceBitKhr = 8
+    VkDeviceGroupPresentModeFlagBitsMaxEnumKhr = 2147483647
+  end
   struct SwapchainCreateInfoKhr
     s_type : StructureType
     p_next : Void*
@@ -2988,13 +3385,6 @@ lib Vulkan
     old_swapchain : SwapchainKhr
   end
   alias SwapchainCreateFlagsKhr = Flags
-  enum CompositeAlphaFlagBitsKhr
-    VkCompositeAlphaOpaqueBitKhr = 1
-    VkCompositeAlphaPreMultipliedBitKhr = 2
-    VkCompositeAlphaPostMultipliedBitKhr = 4
-    VkCompositeAlphaInheritBitKhr = 8
-    VkCompositeAlphaFlagBitsMaxEnumKhr = 2147483647
-  end
   type SwapchainKhr = Void*
   struct PresentInfoKhr
     s_type : StructureType
@@ -3040,13 +3430,6 @@ lib Vulkan
     p_device_masks : Uint32T*
     mode : DeviceGroupPresentModeFlagBitsKhr
   end
-  enum DeviceGroupPresentModeFlagBitsKhr
-    VkDeviceGroupPresentModeLocalBitKhr = 1
-    VkDeviceGroupPresentModeRemoteBitKhr = 2
-    VkDeviceGroupPresentModeSumBitKhr = 4
-    VkDeviceGroupPresentModeLocalMultiDeviceBitKhr = 8
-    VkDeviceGroupPresentModeFlagBitsMaxEnumKhr = 2147483647
-  end
   struct DeviceGroupSwapchainCreateInfoKhr
     s_type : StructureType
     p_next : Void*
@@ -3063,6 +3446,13 @@ lib Vulkan
   fun acquire_next_image2_khr = vkAcquireNextImage2KHR(device : Device, p_acquire_info : AcquireNextImageInfoKhr*, p_image_index : Uint32T*) : Result
   alias DisplayKhrT = Void
   alias DisplayModeKhrT = Void
+  enum DisplayPlaneAlphaFlagBitsKhr
+    VkDisplayPlaneAlphaOpaqueBitKhr = 1
+    VkDisplayPlaneAlphaGlobalBitKhr = 2
+    VkDisplayPlaneAlphaPerPixelBitKhr = 4
+    VkDisplayPlaneAlphaPerPixelPremultipliedBitKhr = 8
+    VkDisplayPlaneAlphaFlagBitsMaxEnumKhr = 2147483647
+  end
   struct DisplayPropertiesKhr
     display : DisplayKhr
     display_name : LibC::Char*
@@ -3118,13 +3508,6 @@ lib Vulkan
     image_extent : Extent2D
   end
   alias DisplaySurfaceCreateFlagsKhr = Flags
-  enum DisplayPlaneAlphaFlagBitsKhr
-    VkDisplayPlaneAlphaOpaqueBitKhr = 1
-    VkDisplayPlaneAlphaGlobalBitKhr = 2
-    VkDisplayPlaneAlphaPerPixelBitKhr = 4
-    VkDisplayPlaneAlphaPerPixelPremultipliedBitKhr = 8
-    VkDisplayPlaneAlphaFlagBitsMaxEnumKhr = 2147483647
-  end
   fun get_physical_device_display_properties_khr = vkGetPhysicalDeviceDisplayPropertiesKHR(physical_device : PhysicalDevice, p_property_count : Uint32T*, p_properties : DisplayPropertiesKhr*) : Result
   fun get_physical_device_display_plane_properties_khr = vkGetPhysicalDeviceDisplayPlanePropertiesKHR(physical_device : PhysicalDevice, p_property_count : Uint32T*, p_properties : DisplayPlanePropertiesKhr*) : Result
   fun get_display_plane_supported_displays_khr = vkGetDisplayPlaneSupportedDisplaysKHR(physical_device : PhysicalDevice, plane_index : Uint32T, p_display_count : Uint32T*, p_displays : DisplayKhr*) : Result
@@ -3383,14 +3766,6 @@ lib Vulkan
     storage_push_constant8 : Bool32
   end
   alias DebugReportCallbackExtT = Void
-  struct DebugReportCallbackCreateInfoExt
-    s_type : StructureType
-    p_next : Void*
-    flags : DebugReportFlagsExt
-    pfn_callback : PfnVkDebugReportCallbackExt
-    p_user_data : Void*
-  end
-  alias DebugReportFlagsExt = Flags
   enum DebugReportObjectTypeExt
     VkDebugReportObjectTypeUnknownExt = 0
     VkDebugReportObjectTypeInstanceExt = 1
@@ -3435,16 +3810,27 @@ lib Vulkan
     VkDebugReportObjectTypeRangeSizeExt = 34
     VkDebugReportObjectTypeMaxEnumExt = 2147483647
   end
+  enum DebugReportFlagBitsExt
+    VkDebugReportInformationBitExt = 1
+    VkDebugReportWarningBitExt = 2
+    VkDebugReportPerformanceWarningBitExt = 4
+    VkDebugReportErrorBitExt = 8
+    VkDebugReportDebugBitExt = 16
+    VkDebugReportFlagBitsMaxEnumExt = 2147483647
+  end
+  struct DebugReportCallbackCreateInfoExt
+    s_type : StructureType
+    p_next : Void*
+    flags : DebugReportFlagsExt
+    pfn_callback : PfnVkDebugReportCallbackExt
+    p_user_data : Void*
+  end
+  alias DebugReportFlagsExt = Flags
   alias PfnVkDebugReportCallbackExt = (DebugReportFlagsExt, DebugReportObjectTypeExt, Uint64T, LibC::SizeT, Int32T, LibC::Char*, LibC::Char*, Void* -> Bool32)
   fun create_debug_report_callback_ext = vkCreateDebugReportCallbackEXT(instance : Instance, p_create_info : DebugReportCallbackCreateInfoExt*, p_allocator : AllocationCallbacks*, p_callback : DebugReportCallbackExt*) : Result
   type DebugReportCallbackExt = Void*
   fun destroy_debug_report_callback_ext = vkDestroyDebugReportCallbackEXT(instance : Instance, callback : DebugReportCallbackExt, p_allocator : AllocationCallbacks*)
   fun debug_report_message_ext = vkDebugReportMessageEXT(instance : Instance, flags : DebugReportFlagsExt, object_type : DebugReportObjectTypeExt, object : Uint64T, location : LibC::SizeT, message_code : Int32T, p_layer_prefix : LibC::Char*, p_message : LibC::Char*)
-  struct PipelineRasterizationStateRasterizationOrderAmd
-    s_type : StructureType
-    p_next : Void*
-    rasterization_order : RasterizationOrderAmd
-  end
   enum RasterizationOrderAmd
     VkRasterizationOrderStrictAmd = 0
     VkRasterizationOrderRelaxedAmd = 1
@@ -3452,6 +3838,11 @@ lib Vulkan
     VkRasterizationOrderEndRangeAmd = 1
     VkRasterizationOrderRangeSizeAmd = 2
     VkRasterizationOrderMaxEnumAmd = 2147483647
+  end
+  struct PipelineRasterizationStateRasterizationOrderAmd
+    s_type : StructureType
+    p_next : Void*
+    rasterization_order : RasterizationOrderAmd
   end
   struct DebugMarkerObjectNameInfoExt
     s_type : StructureType
@@ -3503,6 +3894,15 @@ lib Vulkan
     p_next : Void*
     supports_texture_gather_lod_bias_amd : Bool32
   end
+  enum ShaderInfoTypeAmd
+    VkShaderInfoTypeStatisticsAmd = 0
+    VkShaderInfoTypeBinaryAmd = 1
+    VkShaderInfoTypeDisassemblyAmd = 2
+    VkShaderInfoTypeBeginRangeAmd = 0
+    VkShaderInfoTypeEndRangeAmd = 2
+    VkShaderInfoTypeRangeSizeAmd = 3
+    VkShaderInfoTypeMaxEnumAmd = 2147483647
+  end
   struct ShaderResourceUsageAmd
     num_used_vgprs : Uint32T
     num_used_sgprs : Uint32T
@@ -3520,14 +3920,18 @@ lib Vulkan
     compute_work_group_size : Uint32T[3]
   end
   fun get_shader_info_amd = vkGetShaderInfoAMD(device : Device, pipeline : Pipeline, shader_stage : ShaderStageFlagBits, info_type : ShaderInfoTypeAmd, p_info_size : LibC::SizeT*, p_info : Void*) : Result
-  enum ShaderInfoTypeAmd
-    VkShaderInfoTypeStatisticsAmd = 0
-    VkShaderInfoTypeBinaryAmd = 1
-    VkShaderInfoTypeDisassemblyAmd = 2
-    VkShaderInfoTypeBeginRangeAmd = 0
-    VkShaderInfoTypeEndRangeAmd = 2
-    VkShaderInfoTypeRangeSizeAmd = 3
-    VkShaderInfoTypeMaxEnumAmd = 2147483647
+  enum ExternalMemoryHandleTypeFlagBitsNv
+    VkExternalMemoryHandleTypeOpaqueWin32BitNv = 1
+    VkExternalMemoryHandleTypeOpaqueWin32KmtBitNv = 2
+    VkExternalMemoryHandleTypeD3D11ImageBitNv = 4
+    VkExternalMemoryHandleTypeD3D11ImageKmtBitNv = 8
+    VkExternalMemoryHandleTypeFlagBitsMaxEnumNv = 2147483647
+  end
+  enum ExternalMemoryFeatureFlagBitsNv
+    VkExternalMemoryFeatureDedicatedOnlyBitNv = 1
+    VkExternalMemoryFeatureExportableBitNv = 2
+    VkExternalMemoryFeatureImportableBitNv = 4
+    VkExternalMemoryFeatureFlagBitsMaxEnumNv = 2147483647
   end
   struct ExternalImageFormatPropertiesNv
     image_format_properties : ImageFormatProperties
@@ -3548,12 +3952,6 @@ lib Vulkan
     p_next : Void*
     handle_types : ExternalMemoryHandleTypeFlagsNv
   end
-  struct ValidationFlagsExt
-    s_type : StructureType
-    p_next : Void*
-    disabled_validation_check_count : Uint32T
-    p_disabled_validation_checks : ValidationCheckExt*
-  end
   enum ValidationCheckExt
     VkValidationCheckAllExt = 0
     VkValidationCheckShadersExt = 1
@@ -3561,6 +3959,16 @@ lib Vulkan
     VkValidationCheckEndRangeExt = 1
     VkValidationCheckRangeSizeExt = 2
     VkValidationCheckMaxEnumExt = 2147483647
+  end
+  struct ValidationFlagsExt
+    s_type : StructureType
+    p_next : Void*
+    disabled_validation_check_count : Uint32T
+    p_disabled_validation_checks : ValidationCheckExt*
+  end
+  enum ConditionalRenderingFlagBitsExt
+    VkConditionalRenderingInvertedBitExt = 1
+    VkConditionalRenderingFlagBitsMaxEnumExt = 2147483647
   end
   struct ConditionalRenderingBeginInfoExt
     s_type : StructureType
@@ -3585,6 +3993,43 @@ lib Vulkan
   fun cmd_end_conditional_rendering_ext = vkCmdEndConditionalRenderingEXT(command_buffer : CommandBuffer)
   alias ObjectTableNvxT = Void
   alias IndirectCommandsLayoutNvxT = Void
+  enum IndirectCommandsTokenTypeNvx
+    VkIndirectCommandsTokenTypePipelineNvx = 0
+    VkIndirectCommandsTokenTypeDescriptorSetNvx = 1
+    VkIndirectCommandsTokenTypeIndexBufferNvx = 2
+    VkIndirectCommandsTokenTypeVertexBufferNvx = 3
+    VkIndirectCommandsTokenTypePushConstantNvx = 4
+    VkIndirectCommandsTokenTypeDrawIndexedNvx = 5
+    VkIndirectCommandsTokenTypeDrawNvx = 6
+    VkIndirectCommandsTokenTypeDispatchNvx = 7
+    VkIndirectCommandsTokenTypeBeginRangeNvx = 0
+    VkIndirectCommandsTokenTypeEndRangeNvx = 7
+    VkIndirectCommandsTokenTypeRangeSizeNvx = 8
+    VkIndirectCommandsTokenTypeMaxEnumNvx = 2147483647
+  end
+  enum ObjectEntryTypeNvx
+    VkObjectEntryTypeDescriptorSetNvx = 0
+    VkObjectEntryTypePipelineNvx = 1
+    VkObjectEntryTypeIndexBufferNvx = 2
+    VkObjectEntryTypeVertexBufferNvx = 3
+    VkObjectEntryTypePushConstantNvx = 4
+    VkObjectEntryTypeBeginRangeNvx = 0
+    VkObjectEntryTypeEndRangeNvx = 4
+    VkObjectEntryTypeRangeSizeNvx = 5
+    VkObjectEntryTypeMaxEnumNvx = 2147483647
+  end
+  enum IndirectCommandsLayoutUsageFlagBitsNvx
+    VkIndirectCommandsLayoutUsageUnorderedSequencesBitNvx = 1
+    VkIndirectCommandsLayoutUsageSparseSequencesBitNvx = 2
+    VkIndirectCommandsLayoutUsageEmptyExecutionsBitNvx = 4
+    VkIndirectCommandsLayoutUsageIndexedSequencesBitNvx = 8
+    VkIndirectCommandsLayoutUsageFlagBitsMaxEnumNvx = 2147483647
+  end
+  enum ObjectEntryUsageFlagBitsNvx
+    VkObjectEntryUsageGraphicsBitNvx = 1
+    VkObjectEntryUsageComputeBitNvx = 2
+    VkObjectEntryUsageFlagBitsMaxEnumNvx = 2147483647
+  end
   struct DeviceGeneratedCommandsFeaturesNvx
     s_type : StructureType
     p_next : Void*
@@ -3603,20 +4048,6 @@ lib Vulkan
     token_type : IndirectCommandsTokenTypeNvx
     buffer : Buffer
     offset : DeviceSize
-  end
-  enum IndirectCommandsTokenTypeNvx
-    VkIndirectCommandsTokenTypePipelineNvx = 0
-    VkIndirectCommandsTokenTypeDescriptorSetNvx = 1
-    VkIndirectCommandsTokenTypeIndexBufferNvx = 2
-    VkIndirectCommandsTokenTypeVertexBufferNvx = 3
-    VkIndirectCommandsTokenTypePushConstantNvx = 4
-    VkIndirectCommandsTokenTypeDrawIndexedNvx = 5
-    VkIndirectCommandsTokenTypeDrawNvx = 6
-    VkIndirectCommandsTokenTypeDispatchNvx = 7
-    VkIndirectCommandsTokenTypeBeginRangeNvx = 0
-    VkIndirectCommandsTokenTypeEndRangeNvx = 7
-    VkIndirectCommandsTokenTypeRangeSizeNvx = 8
-    VkIndirectCommandsTokenTypeMaxEnumNvx = 2147483647
   end
   struct IndirectCommandsLayoutTokenNvx
     token_type : IndirectCommandsTokenTypeNvx
@@ -3668,17 +4099,6 @@ lib Vulkan
     max_storage_images_per_descriptor : Uint32T
     max_sampled_images_per_descriptor : Uint32T
     max_pipeline_layouts : Uint32T
-  end
-  enum ObjectEntryTypeNvx
-    VkObjectEntryTypeDescriptorSetNvx = 0
-    VkObjectEntryTypePipelineNvx = 1
-    VkObjectEntryTypeIndexBufferNvx = 2
-    VkObjectEntryTypeVertexBufferNvx = 3
-    VkObjectEntryTypePushConstantNvx = 4
-    VkObjectEntryTypeBeginRangeNvx = 0
-    VkObjectEntryTypeEndRangeNvx = 4
-    VkObjectEntryTypeRangeSizeNvx = 5
-    VkObjectEntryTypeMaxEnumNvx = 2147483647
   end
   alias ObjectEntryUsageFlagsNvx = Flags
   struct ObjectTableEntryNvx
@@ -3735,6 +4155,10 @@ lib Vulkan
   end
   fun cmd_set_viewport_w_scaling_nv = vkCmdSetViewportWScalingNV(command_buffer : CommandBuffer, first_viewport : Uint32T, viewport_count : Uint32T, p_viewport_w_scalings : ViewportWScalingNv*)
   fun release_display_ext = vkReleaseDisplayEXT(physical_device : PhysicalDevice, display : DisplayKhr) : Result
+  enum SurfaceCounterFlagBitsExt
+    VkSurfaceCounterVblankExt = 1
+    VkSurfaceCounterFlagBitsMaxEnumExt = 2147483647
+  end
   struct SurfaceCapabilities2Ext
     s_type : StructureType
     p_next : Void*
@@ -3752,11 +4176,6 @@ lib Vulkan
   end
   alias SurfaceCounterFlagsExt = Flags
   fun get_physical_device_surface_capabilities2_ext = vkGetPhysicalDeviceSurfaceCapabilities2EXT(physical_device : PhysicalDevice, surface : SurfaceKhr, p_surface_capabilities : SurfaceCapabilities2Ext*) : Result
-  struct DisplayPowerInfoExt
-    s_type : StructureType
-    p_next : Void*
-    power_state : DisplayPowerStateExt
-  end
   enum DisplayPowerStateExt
     VkDisplayPowerStateOffExt = 0
     VkDisplayPowerStateSuspendExt = 1
@@ -3766,11 +4185,6 @@ lib Vulkan
     VkDisplayPowerStateRangeSizeExt = 3
     VkDisplayPowerStateMaxEnumExt = 2147483647
   end
-  struct DeviceEventInfoExt
-    s_type : StructureType
-    p_next : Void*
-    device_event : DeviceEventTypeExt
-  end
   enum DeviceEventTypeExt
     VkDeviceEventTypeDisplayHotplugExt = 0
     VkDeviceEventTypeBeginRangeExt = 0
@@ -3778,17 +4192,27 @@ lib Vulkan
     VkDeviceEventTypeRangeSizeExt = 1
     VkDeviceEventTypeMaxEnumExt = 2147483647
   end
-  struct DisplayEventInfoExt
-    s_type : StructureType
-    p_next : Void*
-    display_event : DisplayEventTypeExt
-  end
   enum DisplayEventTypeExt
     VkDisplayEventTypeFirstPixelOutExt = 0
     VkDisplayEventTypeBeginRangeExt = 0
     VkDisplayEventTypeEndRangeExt = 0
     VkDisplayEventTypeRangeSizeExt = 1
     VkDisplayEventTypeMaxEnumExt = 2147483647
+  end
+  struct DisplayPowerInfoExt
+    s_type : StructureType
+    p_next : Void*
+    power_state : DisplayPowerStateExt
+  end
+  struct DeviceEventInfoExt
+    s_type : StructureType
+    p_next : Void*
+    device_event : DeviceEventTypeExt
+  end
+  struct DisplayEventInfoExt
+    s_type : StructureType
+    p_next : Void*
+    display_event : DisplayEventTypeExt
   end
   struct SwapchainCounterCreateInfoExt
     s_type : StructureType
@@ -3799,10 +4223,6 @@ lib Vulkan
   fun register_device_event_ext = vkRegisterDeviceEventEXT(device : Device, p_device_event_info : DeviceEventInfoExt*, p_allocator : AllocationCallbacks*, p_fence : Fence*) : Result
   fun register_display_event_ext = vkRegisterDisplayEventEXT(device : Device, display : DisplayKhr, p_display_event_info : DisplayEventInfoExt*, p_allocator : AllocationCallbacks*, p_fence : Fence*) : Result
   fun get_swapchain_counter_ext = vkGetSwapchainCounterEXT(device : Device, swapchain : SwapchainKhr, counter : SurfaceCounterFlagBitsExt, p_counter_value : Uint64T*) : Result
-  enum SurfaceCounterFlagBitsExt
-    VkSurfaceCounterVblankExt = 1
-    VkSurfaceCounterFlagBitsMaxEnumExt = 2147483647
-  end
   struct RefreshCycleDurationGoogle
     refresh_duration : Uint64T
   end
@@ -3830,12 +4250,6 @@ lib Vulkan
     p_next : Void*
     per_view_position_all_components : Bool32
   end
-  struct ViewportSwizzleNv
-    x : ViewportCoordinateSwizzleNv
-    y : ViewportCoordinateSwizzleNv
-    z : ViewportCoordinateSwizzleNv
-    w : ViewportCoordinateSwizzleNv
-  end
   enum ViewportCoordinateSwizzleNv
     VkViewportCoordinateSwizzlePositiveXNv = 0
     VkViewportCoordinateSwizzleNegativeXNv = 1
@@ -3850,6 +4264,12 @@ lib Vulkan
     VkViewportCoordinateSwizzleRangeSizeNv = 8
     VkViewportCoordinateSwizzleMaxEnumNv = 2147483647
   end
+  struct ViewportSwizzleNv
+    x : ViewportCoordinateSwizzleNv
+    y : ViewportCoordinateSwizzleNv
+    z : ViewportCoordinateSwizzleNv
+    w : ViewportCoordinateSwizzleNv
+  end
   struct PipelineViewportSwizzleStateCreateInfoNv
     s_type : StructureType
     p_next : Void*
@@ -3858,6 +4278,14 @@ lib Vulkan
     p_viewport_swizzles : ViewportSwizzleNv*
   end
   alias PipelineViewportSwizzleStateCreateFlagsNv = Flags
+  enum DiscardRectangleModeExt
+    VkDiscardRectangleModeInclusiveExt = 0
+    VkDiscardRectangleModeExclusiveExt = 1
+    VkDiscardRectangleModeBeginRangeExt = 0
+    VkDiscardRectangleModeEndRangeExt = 1
+    VkDiscardRectangleModeRangeSizeExt = 2
+    VkDiscardRectangleModeMaxEnumExt = 2147483647
+  end
   struct PhysicalDeviceDiscardRectanglePropertiesExt
     s_type : StructureType
     p_next : Void*
@@ -3872,15 +4300,16 @@ lib Vulkan
     p_discard_rectangles : Rect2D*
   end
   alias PipelineDiscardRectangleStateCreateFlagsExt = Flags
-  enum DiscardRectangleModeExt
-    VkDiscardRectangleModeInclusiveExt = 0
-    VkDiscardRectangleModeExclusiveExt = 1
-    VkDiscardRectangleModeBeginRangeExt = 0
-    VkDiscardRectangleModeEndRangeExt = 1
-    VkDiscardRectangleModeRangeSizeExt = 2
-    VkDiscardRectangleModeMaxEnumExt = 2147483647
-  end
   fun cmd_set_discard_rectangle_ext = vkCmdSetDiscardRectangleEXT(command_buffer : CommandBuffer, first_discard_rectangle : Uint32T, discard_rectangle_count : Uint32T, p_discard_rectangles : Rect2D*)
+  enum ConservativeRasterizationModeExt
+    VkConservativeRasterizationModeDisabledExt = 0
+    VkConservativeRasterizationModeOverestimateExt = 1
+    VkConservativeRasterizationModeUnderestimateExt = 2
+    VkConservativeRasterizationModeBeginRangeExt = 0
+    VkConservativeRasterizationModeEndRangeExt = 2
+    VkConservativeRasterizationModeRangeSizeExt = 3
+    VkConservativeRasterizationModeMaxEnumExt = 2147483647
+  end
   struct PhysicalDeviceConservativeRasterizationPropertiesExt
     s_type : StructureType
     p_next : Void*
@@ -3902,15 +4331,6 @@ lib Vulkan
     extra_primitive_overestimation_size : LibC::Float
   end
   alias PipelineRasterizationConservativeStateCreateFlagsExt = Flags
-  enum ConservativeRasterizationModeExt
-    VkConservativeRasterizationModeDisabledExt = 0
-    VkConservativeRasterizationModeOverestimateExt = 1
-    VkConservativeRasterizationModeUnderestimateExt = 2
-    VkConservativeRasterizationModeBeginRangeExt = 0
-    VkConservativeRasterizationModeEndRangeExt = 2
-    VkConservativeRasterizationModeRangeSizeExt = 3
-    VkConservativeRasterizationModeMaxEnumExt = 2147483647
-  end
   struct XyColorExt
     x : LibC::Float
     y : LibC::Float
@@ -3929,57 +4349,25 @@ lib Vulkan
   end
   fun set_hdr_metadata_ext = vkSetHdrMetadataEXT(device : Device, swapchain_count : Uint32T, p_swapchains : SwapchainKhr*, p_metadata : HdrMetadataExt*)
   alias DebugUtilsMessengerExtT = Void
+  enum DebugUtilsMessageSeverityFlagBitsExt
+    VkDebugUtilsMessageSeverityVerboseBitExt = 1
+    VkDebugUtilsMessageSeverityInfoBitExt = 16
+    VkDebugUtilsMessageSeverityWarningBitExt = 256
+    VkDebugUtilsMessageSeverityErrorBitExt = 4096
+    VkDebugUtilsMessageSeverityFlagBitsMaxEnumExt = 2147483647
+  end
+  enum DebugUtilsMessageTypeFlagBitsExt
+    VkDebugUtilsMessageTypeGeneralBitExt = 1
+    VkDebugUtilsMessageTypeValidationBitExt = 2
+    VkDebugUtilsMessageTypePerformanceBitExt = 4
+    VkDebugUtilsMessageTypeFlagBitsMaxEnumExt = 2147483647
+  end
   struct DebugUtilsObjectNameInfoExt
     s_type : StructureType
     p_next : Void*
     object_type : ObjectType
     object_handle : Uint64T
     p_object_name : LibC::Char*
-  end
-  enum ObjectType
-    VkObjectTypeUnknown = 0
-    VkObjectTypeInstance = 1
-    VkObjectTypePhysicalDevice = 2
-    VkObjectTypeDevice = 3
-    VkObjectTypeQueue = 4
-    VkObjectTypeSemaphore = 5
-    VkObjectTypeCommandBuffer = 6
-    VkObjectTypeFence = 7
-    VkObjectTypeDeviceMemory = 8
-    VkObjectTypeBuffer = 9
-    VkObjectTypeImage = 10
-    VkObjectTypeEvent = 11
-    VkObjectTypeQueryPool = 12
-    VkObjectTypeBufferView = 13
-    VkObjectTypeImageView = 14
-    VkObjectTypeShaderModule = 15
-    VkObjectTypePipelineCache = 16
-    VkObjectTypePipelineLayout = 17
-    VkObjectTypeRenderPass = 18
-    VkObjectTypePipeline = 19
-    VkObjectTypeDescriptorSetLayout = 20
-    VkObjectTypeSampler = 21
-    VkObjectTypeDescriptorPool = 22
-    VkObjectTypeDescriptorSet = 23
-    VkObjectTypeFramebuffer = 24
-    VkObjectTypeCommandPool = 25
-    VkObjectTypeSamplerYcbcrConversion = 1000156000
-    VkObjectTypeDescriptorUpdateTemplate = 1000085000
-    VkObjectTypeSurfaceKhr = 1000000000
-    VkObjectTypeSwapchainKhr = 1000001000
-    VkObjectTypeDisplayKhr = 1000002000
-    VkObjectTypeDisplayModeKhr = 1000002001
-    VkObjectTypeDebugReportCallbackExt = 1000011000
-    VkObjectTypeObjectTableNvx = 1000086000
-    VkObjectTypeIndirectCommandsLayoutNvx = 1000086001
-    VkObjectTypeDebugUtilsMessengerExt = 1000128000
-    VkObjectTypeValidationCacheExt = 1000160000
-    VkObjectTypeDescriptorUpdateTemplateKhr = 1000085000
-    VkObjectTypeSamplerYcbcrConversionKhr = 1000156000
-    VkObjectTypeBeginRange = 0
-    VkObjectTypeEndRange = 25
-    VkObjectTypeRangeSize = 26
-    VkObjectTypeMaxEnum = 2147483647
   end
   struct DebugUtilsObjectTagInfoExt
     s_type : StructureType
@@ -4023,13 +4411,6 @@ lib Vulkan
   alias DebugUtilsMessengerCreateFlagsExt = Flags
   alias DebugUtilsMessageSeverityFlagsExt = Flags
   alias DebugUtilsMessageTypeFlagsExt = Flags
-  enum DebugUtilsMessageSeverityFlagBitsExt
-    VkDebugUtilsMessageSeverityVerboseBitExt = 1
-    VkDebugUtilsMessageSeverityInfoBitExt = 16
-    VkDebugUtilsMessageSeverityWarningBitExt = 256
-    VkDebugUtilsMessageSeverityErrorBitExt = 4096
-    VkDebugUtilsMessageSeverityFlagBitsMaxEnumExt = 2147483647
-  end
   alias PfnVkDebugUtilsMessengerCallbackExt = (DebugUtilsMessageSeverityFlagBitsExt, DebugUtilsMessageTypeFlagsExt, DebugUtilsMessengerCallbackDataExt*, Void* -> Bool32)
   fun set_debug_utils_object_name_ext = vkSetDebugUtilsObjectNameEXT(device : Device, p_name_info : DebugUtilsObjectNameInfoExt*) : Result
   fun set_debug_utils_object_tag_ext = vkSetDebugUtilsObjectTagEXT(device : Device, p_tag_info : DebugUtilsObjectTagInfoExt*) : Result
@@ -4043,11 +4424,6 @@ lib Vulkan
   type DebugUtilsMessengerExt = Void*
   fun destroy_debug_utils_messenger_ext = vkDestroyDebugUtilsMessengerEXT(instance : Instance, messenger : DebugUtilsMessengerExt, p_allocator : AllocationCallbacks*)
   fun submit_debug_utils_message_ext = vkSubmitDebugUtilsMessageEXT(instance : Instance, message_severity : DebugUtilsMessageSeverityFlagBitsExt, message_types : DebugUtilsMessageTypeFlagsExt, p_callback_data : DebugUtilsMessengerCallbackDataExt*)
-  struct SamplerReductionModeCreateInfoExt
-    s_type : StructureType
-    p_next : Void*
-    reduction_mode : SamplerReductionModeExt
-  end
   enum SamplerReductionModeExt
     VkSamplerReductionModeWeightedAverageExt = 0
     VkSamplerReductionModeMinExt = 1
@@ -4056,6 +4432,11 @@ lib Vulkan
     VkSamplerReductionModeEndRangeExt = 2
     VkSamplerReductionModeRangeSizeExt = 3
     VkSamplerReductionModeMaxEnumExt = 2147483647
+  end
+  struct SamplerReductionModeCreateInfoExt
+    s_type : StructureType
+    p_next : Void*
+    reduction_mode : SamplerReductionModeExt
   end
   struct PhysicalDeviceSamplerFilterMinmaxPropertiesExt
     s_type : StructureType
@@ -4113,6 +4494,15 @@ lib Vulkan
   end
   fun cmd_set_sample_locations_ext = vkCmdSetSampleLocationsEXT(command_buffer : CommandBuffer, p_sample_locations_info : SampleLocationsInfoExt*)
   fun get_physical_device_multisample_properties_ext = vkGetPhysicalDeviceMultisamplePropertiesEXT(physical_device : PhysicalDevice, samples : SampleCountFlagBits, p_multisample_properties : MultisamplePropertiesExt*)
+  enum BlendOverlapExt
+    VkBlendOverlapUncorrelatedExt = 0
+    VkBlendOverlapDisjointExt = 1
+    VkBlendOverlapConjointExt = 2
+    VkBlendOverlapBeginRangeExt = 0
+    VkBlendOverlapEndRangeExt = 2
+    VkBlendOverlapRangeSizeExt = 3
+    VkBlendOverlapMaxEnumExt = 2147483647
+  end
   struct PhysicalDeviceBlendOperationAdvancedFeaturesExt
     s_type : StructureType
     p_next : Void*
@@ -4135,15 +4525,6 @@ lib Vulkan
     dst_premultiplied : Bool32
     blend_overlap : BlendOverlapExt
   end
-  enum BlendOverlapExt
-    VkBlendOverlapUncorrelatedExt = 0
-    VkBlendOverlapDisjointExt = 1
-    VkBlendOverlapConjointExt = 2
-    VkBlendOverlapBeginRangeExt = 0
-    VkBlendOverlapEndRangeExt = 2
-    VkBlendOverlapRangeSizeExt = 3
-    VkBlendOverlapMaxEnumExt = 2147483647
-  end
   struct PipelineCoverageToColorStateCreateInfoNv
     s_type : StructureType
     p_next : Void*
@@ -4152,16 +4533,6 @@ lib Vulkan
     coverage_to_color_location : Uint32T
   end
   alias PipelineCoverageToColorStateCreateFlagsNv = Flags
-  struct PipelineCoverageModulationStateCreateInfoNv
-    s_type : StructureType
-    p_next : Void*
-    flags : PipelineCoverageModulationStateCreateFlagsNv
-    coverage_modulation_mode : CoverageModulationModeNv
-    coverage_modulation_table_enable : Bool32
-    coverage_modulation_table_count : Uint32T
-    p_coverage_modulation_table : LibC::Float*
-  end
-  alias PipelineCoverageModulationStateCreateFlagsNv = Flags
   enum CoverageModulationModeNv
     VkCoverageModulationModeNoneNv = 0
     VkCoverageModulationModeRgbNv = 1
@@ -4172,7 +4543,24 @@ lib Vulkan
     VkCoverageModulationModeRangeSizeNv = 4
     VkCoverageModulationModeMaxEnumNv = 2147483647
   end
+  struct PipelineCoverageModulationStateCreateInfoNv
+    s_type : StructureType
+    p_next : Void*
+    flags : PipelineCoverageModulationStateCreateFlagsNv
+    coverage_modulation_mode : CoverageModulationModeNv
+    coverage_modulation_table_enable : Bool32
+    coverage_modulation_table_count : Uint32T
+    p_coverage_modulation_table : LibC::Float*
+  end
+  alias PipelineCoverageModulationStateCreateFlagsNv = Flags
   alias ValidationCacheExtT = Void
+  enum ValidationCacheHeaderVersionExt
+    VkValidationCacheHeaderVersionOneExt = 1
+    VkValidationCacheHeaderVersionBeginRangeExt = 1
+    VkValidationCacheHeaderVersionEndRangeExt = 1
+    VkValidationCacheHeaderVersionRangeSizeExt = 1
+    VkValidationCacheHeaderVersionMaxEnumExt = 2147483647
+  end
   struct ValidationCacheCreateInfoExt
     s_type : StructureType
     p_next : Void*
@@ -4191,6 +4579,13 @@ lib Vulkan
   fun destroy_validation_cache_ext = vkDestroyValidationCacheEXT(device : Device, validation_cache : ValidationCacheExt, p_allocator : AllocationCallbacks*)
   fun merge_validation_caches_ext = vkMergeValidationCachesEXT(device : Device, dst_cache : ValidationCacheExt, src_cache_count : Uint32T, p_src_caches : ValidationCacheExt*) : Result
   fun get_validation_cache_data_ext = vkGetValidationCacheDataEXT(device : Device, validation_cache : ValidationCacheExt, p_data_size : LibC::SizeT*, p_data : Void*) : Result
+  enum DescriptorBindingFlagBitsExt
+    VkDescriptorBindingUpdateAfterBindBitExt = 1
+    VkDescriptorBindingUpdateUnusedWhilePendingBitExt = 2
+    VkDescriptorBindingPartiallyBoundBitExt = 4
+    VkDescriptorBindingVariableDescriptorCountBitExt = 8
+    VkDescriptorBindingFlagBitsMaxEnumExt = 2147483647
+  end
   struct DescriptorSetLayoutBindingFlagsCreateInfoExt
     s_type : StructureType
     p_next : Void*
@@ -4260,11 +4655,6 @@ lib Vulkan
     p_next : Void*
     max_variable_descriptor_count : Uint32T
   end
-  struct DeviceQueueGlobalPriorityCreateInfoExt
-    s_type : StructureType
-    p_next : Void*
-    global_priority : QueueGlobalPriorityExt
-  end
   enum QueueGlobalPriorityExt
     VkQueueGlobalPriorityLowExt = 128
     VkQueueGlobalPriorityMediumExt = 256
@@ -4274,6 +4664,11 @@ lib Vulkan
     VkQueueGlobalPriorityEndRangeExt = 1024
     VkQueueGlobalPriorityRangeSizeExt = 897
     VkQueueGlobalPriorityMaxEnumExt = 2147483647
+  end
+  struct DeviceQueueGlobalPriorityCreateInfoExt
+    s_type : StructureType
+    p_next : Void*
+    global_priority : QueueGlobalPriorityExt
   end
   struct ImportMemoryHostPointerInfoExt
     s_type : StructureType
