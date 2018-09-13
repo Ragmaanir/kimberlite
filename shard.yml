@@ -1,0 +1,17 @@
+name: kimberlite
+version: 0.1.0
+
+authors:
+  - Ragmaanir <ragmaanir@gmail.com>
+
+crystal: 0.26.1
+
+license: MIT
+
+development_dependencies:
+  ameba:
+    github: veelenga/ameba
+    version: 0.7.0
+  microtest:
+    github: ragmaanir/microtest
+    branch: master
