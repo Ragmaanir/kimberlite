@@ -1,0 +1,3 @@
+[submodule "crystal_lib"]
+	path = crystal_lib
+	url = https://github.com/Ragmaanir/crystal_lib.git
