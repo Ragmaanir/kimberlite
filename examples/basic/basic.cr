@@ -182,6 +182,7 @@ class App
     end
 
     Vulkan.get_device_queue(device, graphics_family_idx.to_u32, 0, pointerof(@graphics_queue))
+    Vulkan.get_device_queue(device, present_family_idx.to_u32, 0, pointerof(@present_queue))
   end
 
   def enumerate_extensions
