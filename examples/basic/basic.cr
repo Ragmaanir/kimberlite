@@ -7,6 +7,8 @@ class App
 
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
+  getter device : Vulkan::Device = nil.as(Vulkan::Device)
+  getter graphics_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -70,9 +72,13 @@ class App
 
     graphics_queue_idx = families.index do |family|
       family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
-    end
+    end || raise("Graphics Queue not found")
 
-    puts "Graphics Queue: #{graphics_queue_idx != nil}"
+    puts "Graphics Queue Index: #{graphics_queue_idx}"
+
+    @device = create_logical_device(graphics_queue_idx.to_u32)
+
+    Vulkan.get_device_queue(device, graphics_queue_idx.to_u32, 0, pointerof(@graphics_queue))
 
     destroy
   end
@@ -89,8 +95,41 @@ class App
   end
 
   def destroy
+    Vulkan.destroy_device(device, nil)
     destroy_debug_utils_messenger_ext(instance, @debug_callback.pointer.as(Vulkan::DebugUtilsMessengerExt), nil.as(Vulkan::AllocationCallbacks*))
     Vulkan.destroy_instance(instance, nil)
+  end
+
+  def create_logical_device(graphics_queue_idx : UInt32)
+    queue_info = Vulkan::DeviceQueueCreateInfo.new
+    queue_info.s_type = Vulkan::StructureType::VkStructureTypeDeviceQueueCreateInfo
+    queue_info.queue_family_index = graphics_queue_idx
+    queue_info.queue_count = 1
+
+    priority = 1.0_f32
+    queue_info.p_queue_priorities = pointerof(priority)
+
+    features = Vulkan::PhysicalDeviceFeatures.new
+
+    info = Vulkan::DeviceCreateInfo.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeDeviceCreateInfo
+    info.p_queue_create_infos = pointerof(queue_info)
+    info.queue_create_info_count = 1
+
+    info.p_enabled_features = pointerof(features)
+
+    info.enabled_extension_count = 0
+
+    info.enabled_layer_count = 1
+    info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
+
+    device = nil.as(Vulkan::Device)
+
+    if Vulkan.create_device(physical_device, pointerof(info), nil, pointerof(device)) != Vulkan::Result::VkSuccess
+      raise("failed to create logical device!")
+    end
+
+    device
   end
 
   def enumerate_extensions
