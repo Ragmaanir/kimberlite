@@ -15,3 +15,6 @@ development_dependencies:
   microtest:
     github: ragmaanir/microtest
     branch: master
+  lib_glfw:
+    github: calebuharrison/LibGLFW
+    branch: master
