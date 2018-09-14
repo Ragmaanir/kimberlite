@@ -1,13 +1,10 @@
 FROM ubuntu:18.04
 WORKDIR /root
 
-ARG VULKAN_VERSION
-
 ENV PATH="/root/bin:${PATH}"
 
 RUN apt-get update
 RUN apt-get -y install wget
-#RUN apt-get -y install git
 
 RUN mkdir /root/applications
 RUN mkdir /root/bin
@@ -34,11 +31,13 @@ ENV VULKAN_SDK="/root/vulkan" \
     LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH \
     VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
 
-ADD ./sdks/vulkansdk-linux-x86_64-$VULKAN_VERSION.tar.gz .
-RUN mv $VULKAN_VERSION $VULKAN_SDK
+COPY ./VULKAN_VERSION /root/self/
+COPY ./sdks /root/self/sdks/
+COPY ./src /root/self/src/
+COPY ./crystal_lib /root/self/crystal_lib/
+RUN FILE="./self/sdks/vulkansdk-linux-x86_64-`cat ./self/VULKAN_VERSION`.tar.gz" && echo $FILE && tar -xvf $FILE
+RUN mv `cat ./self/VULKAN_VERSION` $VULKAN_SDK
 # </vulkan_sdk>
-
-COPY . /root/self
 
 # <crystal_lib>
 RUN crystal build /root/self/crystal_lib/src/main.cr

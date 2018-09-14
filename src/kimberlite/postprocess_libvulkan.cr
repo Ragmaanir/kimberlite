@@ -1,5 +1,6 @@
 libvulkan = "./src/kimberlite/libvulkan.cr"
 body = File.read(libvulkan)
+version = File.read("./VULKAN_VERSION")
 
 # Some renamings that are done by crystal_lib create incorrect/inconsistent names
 # like dimension2D -> dimension2_d.
@@ -27,6 +28,7 @@ body = <<-TXT
 # ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛
 # ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛ THIS FILE IS MACHINE GENERATED ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛
 # ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛
+# Vulkan: #{version}
 
 #{body}
 TXT
