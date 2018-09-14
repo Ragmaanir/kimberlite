@@ -6,6 +6,7 @@ class App
   end
 
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
+  getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -55,6 +56,12 @@ class App
 
     register_debug_callback
 
+    devices = enumerate_physical_devices
+
+    puts "Physical Devices: #{devices.size}"
+
+    @physical_device = devices.first
+
     destroy
   end
 
@@ -85,6 +92,18 @@ class App
     Vulkan.enumerate_instance_layer_properties(pointerof(count), layers.to_unsafe)
 
     layers
+  end
+
+  def enumerate_physical_devices
+    count = 0_u32
+
+    Vulkan.enumerate_physical_devices(instance, pointerof(count), nil)
+
+    devices = Array(Vulkan::PhysicalDevice).new(count) { nil.as(Vulkan::PhysicalDevice) }
+
+    Vulkan.enumerate_physical_devices(instance, pointerof(count), devices.to_unsafe)
+
+    devices
   end
 
   getter debug_callback : (Vulkan::DebugUtilsMessageSeverityFlagBitsExt, Vulkan::DebugUtilsMessageTypeFlagsExt, Vulkan::DebugUtilsMessengerCallbackDataExt*, Void*) -> UInt32 = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
