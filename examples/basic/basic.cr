@@ -62,6 +62,15 @@ class App
 
     @physical_device = devices.first
 
+    props = Vulkan::PhysicalDeviceProperties.new
+    features = Vulkan::PhysicalDeviceFeatures.new
+
+    Vulkan.get_physical_device_properties(physical_device, pointerof(props))
+    Vulkan.get_physical_device_features(physical_device, pointerof(features))
+
+    puts "Discrete GPU: #{props.device_type == Vulkan::PhysicalDeviceType::VkPhysicalDeviceTypeDiscreteGpu}"
+    puts "Geometry Shaders: #{features.geometry_shader}"
+
     destroy
   end
 
