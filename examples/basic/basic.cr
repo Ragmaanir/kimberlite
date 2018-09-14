@@ -9,7 +9,9 @@ class App
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
   getter device : Vulkan::Device = nil.as(Vulkan::Device)
+
   getter graphics_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
+  getter present_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
 
   getter surface : Vulkan::SurfaceKhr = nil.as(Vulkan::SurfaceKhr)
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
@@ -71,7 +73,16 @@ class App
     # -------------------- debug callback
     register_debug_callback
 
-    # -------------------- enumerate devices, properties and queue families
+    # -------------------- glfw window
+    LibGLFW.window_hint(LibGLFW::CLIENT_API, LibGLFW::NO_API)
+    @window = LibGLFW.create_window(800, 600, "vk".to_unsafe, nil, nil)
+
+    glfw_inst = Pointer(LibGLFW::VkInstance).new(instance.address)
+    glfw_surf = Pointer(LibGLFW::VkSurfaceKHR).new(pointerof(@surface).address)
+
+    LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
+
+    # -------------------- enumerate devices, properties
     devices = enumerate_physical_devices
 
     puts "Physical Devices: #{devices.size}"
@@ -80,29 +91,8 @@ class App
 
     print_physical_device_properties(physical_device)
 
-    families = enumerate_queue_families(physical_device)
-
-    puts "Queue Families: #{families.size}"
-
-    graphics_queue_idx = families.index do |family|
-      family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
-    end || raise("Graphics Queue not found")
-
-    puts "Graphics Queue Index: #{graphics_queue_idx}"
-
     # -------------------- create logical device
-    @device = create_logical_device(graphics_queue_idx.to_u32)
-
-    Vulkan.get_device_queue(device, graphics_queue_idx.to_u32, 0, pointerof(@graphics_queue))
-
-    # ---------- glfw window
-    LibGLFW.window_hint(LibGLFW::CLIENT_API, LibGLFW::NO_API)
-    @window = LibGLFW.create_window(800, 600, "vk".to_unsafe, nil, nil)
-
-    glfw_inst = Pointer(LibGLFW::VkInstance).new(instance.address)
-    glfw_surf = Pointer(LibGLFW::VkSurfaceKHR).new(pointerof(@surface).address)
-
-    LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
+    create_logical_device
 
     # -------------------- destroy
 
@@ -121,27 +111,62 @@ class App
   end
 
   def destroy
+    puts "destroying ..."
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
     destroy_debug_utils_messenger_ext(instance, @debug_callback.pointer.as(Vulkan::DebugUtilsMessengerExt), nil.as(Vulkan::AllocationCallbacks*))
     Vulkan.destroy_instance(instance, nil)
   end
 
-  def create_logical_device(graphics_queue_idx : UInt32)
-    queue_info = Vulkan::DeviceQueueCreateInfo.new
-    queue_info.s_type = Vulkan::StructureType::VkStructureTypeDeviceQueueCreateInfo
-    queue_info.queue_family_index = graphics_queue_idx
-    queue_info.queue_count = 1
+  def create_logical_device
+    # ---------- queue families
+    families = enumerate_queue_families(physical_device)
 
-    priority = 1.0_f32
-    queue_info.p_queue_priorities = pointerof(priority)
+    puts "Queue Families: #{families.size}"
 
+    # ---------- graphics family
+    graphics_family_idx = families.index do |family|
+      family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
+    end || raise("Graphics Queue not found")
+
+    puts "Graphics Queue Index: #{graphics_family_idx}"
+
+    # ---------- present family
+    present_family_idx = nil
+
+    families.each_with_index do |family, i|
+      present = 0_u32
+      Vulkan.get_physical_device_surface_support_khr(physical_device, i, surface, pointerof(present))
+
+      if family.queue_count > 0 && present
+        present_family_idx = i
+        break
+      end
+    end
+
+    present_family_idx = present_family_idx || raise("Present Queue not found")
+
+    # ---------- queue create infos
+    queue_infos = [graphics_family_idx, present_family_idx].uniq.map do |queue_idx|
+      queue_info = Vulkan::DeviceQueueCreateInfo.new
+      queue_info.s_type = Vulkan::StructureType::VkStructureTypeDeviceQueueCreateInfo
+      queue_info.queue_family_index = queue_idx
+      queue_info.queue_count = 1
+
+      priority = 1.0_f32
+      queue_info.p_queue_priorities = pointerof(priority)
+
+      queue_info
+    end
+
+    # ---------- logical device info
     features = Vulkan::PhysicalDeviceFeatures.new
 
     info = Vulkan::DeviceCreateInfo.new
     info.s_type = Vulkan::StructureType::VkStructureTypeDeviceCreateInfo
-    info.p_queue_create_infos = pointerof(queue_info)
-    info.queue_create_info_count = 1
+
+    info.queue_create_info_count = queue_infos.size
+    info.p_queue_create_infos = queue_infos.to_unsafe
 
     info.p_enabled_features = pointerof(features)
 
@@ -150,13 +175,13 @@ class App
     info.enabled_layer_count = 1
     info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
 
-    device = nil.as(Vulkan::Device)
+    # ---------- create logical device
 
-    if Vulkan.create_device(physical_device, pointerof(info), nil, pointerof(device)) != Vulkan::Result::VkSuccess
+    if Vulkan.create_device(physical_device, pointerof(info), nil, pointerof(@device)) != Vulkan::Result::VkSuccess
       raise("failed to create logical device!")
     end
 
-    device
+    Vulkan.get_device_queue(device, graphics_family_idx.to_u32, 0, pointerof(@graphics_queue))
   end
 
   def enumerate_extensions
