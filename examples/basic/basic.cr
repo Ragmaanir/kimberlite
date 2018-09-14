@@ -62,16 +62,30 @@ class App
 
     @physical_device = devices.first
 
+    print_physical_device_properties(physical_device)
+
+    families = enumerate_queue_families(physical_device)
+
+    puts "Queue Families: #{families.size}"
+
+    graphics_queue_idx = families.index do |family|
+      family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
+    end
+
+    puts "Graphics Queue: #{graphics_queue_idx != nil}"
+
+    destroy
+  end
+
+  def print_physical_device_properties(device : Vulkan::PhysicalDevice)
     props = Vulkan::PhysicalDeviceProperties.new
     features = Vulkan::PhysicalDeviceFeatures.new
 
-    Vulkan.get_physical_device_properties(physical_device, pointerof(props))
-    Vulkan.get_physical_device_features(physical_device, pointerof(features))
+    Vulkan.get_physical_device_properties(device, pointerof(props))
+    Vulkan.get_physical_device_features(device, pointerof(features))
 
     puts "Discrete GPU: #{props.device_type == Vulkan::PhysicalDeviceType::VkPhysicalDeviceTypeDiscreteGpu}"
     puts "Geometry Shaders: #{features.geometry_shader}"
-
-    destroy
   end
 
   def destroy
@@ -113,6 +127,18 @@ class App
     Vulkan.enumerate_physical_devices(instance, pointerof(count), devices.to_unsafe)
 
     devices
+  end
+
+  def enumerate_queue_families(device : Vulkan::PhysicalDevice)
+    count = 0_u32
+
+    Vulkan.get_physical_device_queue_family_properties(device, pointerof(count), nil)
+
+    families = Array(Vulkan::QueueFamilyProperties).new(count) { Vulkan::QueueFamilyProperties.new }
+
+    Vulkan.get_physical_device_queue_family_properties(device, pointerof(count), families.to_unsafe)
+
+    families
   end
 
   getter debug_callback : (Vulkan::DebugUtilsMessageSeverityFlagBitsExt, Vulkan::DebugUtilsMessageTypeFlagsExt, Vulkan::DebugUtilsMessengerCallbackDataExt*, Void*) -> UInt32 = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
