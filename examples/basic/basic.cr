@@ -6,6 +6,16 @@ class App
     new
   end
 
+  class SwapChainSupport
+    property capabilities : Vulkan::SurfaceCapabilitiesKhr = Vulkan::SurfaceCapabilitiesKhr.new
+    property formats : Array(Vulkan::SurfaceFormatKhr) = [] of Vulkan::SurfaceFormatKhr
+    property present_modes : Array(Vulkan::PresentModeKhr) = [] of Vulkan::PresentModeKhr
+
+    def capabilities_ptr
+      pointerof(@capabilities)
+    end
+  end
+
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
   getter device : Vulkan::Device = nil.as(Vulkan::Device)
@@ -15,6 +25,8 @@ class App
 
   getter surface : Vulkan::SurfaceKhr = nil.as(Vulkan::SurfaceKhr)
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
+
+  getter swapchain_support : SwapChainSupport = SwapChainSupport.new
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -94,6 +106,12 @@ class App
     # -------------------- create logical device
     create_logical_device
 
+    query_swapchain_support_details
+
+    format = select_swap_surface_format(swapchain_support.formats)
+
+    puts "Swap Surface Fromat: #{format}"
+
     # -------------------- destroy
 
     destroy
@@ -162,6 +180,8 @@ class App
     # ---------- logical device info
     features = Vulkan::PhysicalDeviceFeatures.new
 
+    exts = ["VK_KHR_swapchain".to_unsafe]
+
     info = Vulkan::DeviceCreateInfo.new
     info.s_type = Vulkan::StructureType::VkStructureTypeDeviceCreateInfo
 
@@ -170,7 +190,8 @@ class App
 
     info.p_enabled_features = pointerof(features)
 
-    info.enabled_extension_count = 0
+    info.enabled_extension_count = exts.size
+    info.pp_enabled_extension_names = exts.to_unsafe
 
     info.enabled_layer_count = 1
     info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
@@ -183,6 +204,49 @@ class App
 
     Vulkan.get_device_queue(device, graphics_family_idx.to_u32, 0, pointerof(@graphics_queue))
     Vulkan.get_device_queue(device, present_family_idx.to_u32, 0, pointerof(@present_queue))
+  end
+
+  def query_swapchain_support_details
+    Vulkan.get_physical_device_surface_capabilities_khr(physical_device, surface, swapchain_support.capabilities_ptr)
+
+    count = 0_u32
+    Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), nil)
+
+    if count != 0
+      swapchain_support.formats = Array(Vulkan::SurfaceFormatKhr).new(count) { Vulkan::SurfaceFormatKhr.new }
+      Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), swapchain_support.formats.to_unsafe)
+    else
+      raise "Swapchain: no formats found"
+    end
+
+    count = 0_u32
+    Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), nil)
+
+    if count != 0
+      swapchain_support.present_modes = Array(Vulkan::PresentModeKhr).new(count) { Vulkan::PresentModeKhr::VkPresentModeImmediateKhr }
+      Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), swapchain_support.present_modes.to_unsafe)
+    else
+      raise "Swapchain: no modes found"
+    end
+  end
+
+  def swapchain_supported?
+    !swapchain_support.formats.empty? && !swapchain_support.present_modes.empty?
+  end
+
+  def select_swap_surface_format(candidates : Array(Vulkan::SurfaceFormatKhr)) : Vulkan::SurfaceFormatKhr
+    if candidates.empty?
+      raise "No candidates given"
+    elsif candidates.size == 1 && candidates[0].format == Vulkan::Format::VkFormatUndefined
+      format = Vulkan::SurfaceFormatKhr.new
+      format.format = Vulkan::Format::VkFormatB8G8R8A8Unorm
+      format.color_space = Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
+      format
+    else
+      candidates.find do |format|
+        format.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && format.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
+      end || candidates[0]
+    end
   end
 
   def enumerate_extensions
