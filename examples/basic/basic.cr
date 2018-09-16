@@ -27,6 +27,8 @@ class App
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
 
   getter swapchain_support : SwapChainSupport = SwapChainSupport.new
+  getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
+  getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -111,10 +113,63 @@ class App
     format = select_swap_surface_format(swapchain_support.formats)
 
     puts "Swap Surface Fromat: #{format}"
+    puts "Present modes: #{swapchain_support.present_modes}"
+
+    caps = swapchain_support.capabilities
+
+    extent = if caps.current_extent.width != UInt32::MAX
+               caps.current_extent
+             else
+               ext = Vulkan::Extent2D.new
+               ext.width = 800
+               ext.height = 600
+
+               ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
+               ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
+
+               ext
+             end
+
+    puts "Extent: #{extent}"
+
+    create_swapchain(format, extent, swapchain_support.present_modes.first)
+
+    image_count = 0_u32
+    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), nil)
+    @swapchain_images = Array(Vulkan::Image).new(image_count) { nil.as(Vulkan::Image) }
+    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), swapchain_images.to_unsafe)
 
     # -------------------- destroy
 
     destroy
+  end
+
+  def create_swapchain(format, extent, mode)
+    info = Vulkan::SwapchainCreateInfoKhr.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeSwapchainCreateInfoKhr
+    info.surface = surface
+    info.min_image_count = 2
+    info.image_format = format.format
+    info.image_color_space = format.color_space
+    info.image_extent = extent
+    info.image_array_layers = 1
+    info.image_usage = Vulkan::ImageUsageFlagBits::VkImageUsageColorAttachmentBit
+
+    raise "TODO: graphics queue != present queue" if graphics_queue != present_queue
+
+    info.image_sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
+    info.queue_family_index_count = 0
+    info.p_queue_family_indices = nil
+
+    info.pre_transform = swapchain_support.capabilities.current_transform
+    info.composite_alpha = Vulkan::CompositeAlphaFlagBitsKhr::VkCompositeAlphaOpaqueBitKhr
+    info.present_mode = mode
+    info.clipped = 1
+    info.old_swapchain = nil
+
+    if Vulkan.create_swapchain_khr(device, pointerof(info), nil, pointerof(@swapchain)) != Vulkan::Result::VkSuccess
+      raise("failed to create swap chain!")
+    end
   end
 
   def print_physical_device_properties(device : Vulkan::PhysicalDevice)
@@ -130,6 +185,7 @@ class App
 
   def destroy
     puts "destroying ..."
+    Vulkan.destroy_swapchain_khr(device, swapchain, nil)
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
     destroy_debug_utils_messenger_ext(instance, @debug_callback.pointer.as(Vulkan::DebugUtilsMessengerExt), nil.as(Vulkan::AllocationCallbacks*))
