@@ -1,5 +1,6 @@
 require "lib_glfw"
 require "../../src/kimberlite/libvulkan"
+require "./pipeline"
 
 class App
   def self.call
@@ -30,6 +31,9 @@ class App
   getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
   getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
   getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
+  getter! swapchain_extent : Vulkan::Extent2D
+
+  getter! pipeline : Pipeline
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -118,22 +122,22 @@ class App
 
     caps = swapchain_support.capabilities
 
-    extent = if caps.current_extent.width != UInt32::MAX
-               caps.current_extent
-             else
-               ext = Vulkan::Extent2D.new
-               ext.width = 800
-               ext.height = 600
+    @swapchain_extent = if caps.current_extent.width != UInt32::MAX
+                          caps.current_extent
+                        else
+                          ext = Vulkan::Extent2D.new
+                          ext.width = 800
+                          ext.height = 600
 
-               ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
-               ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
+                          ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
+                          ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
 
-               ext
-             end
+                          ext
+                        end
 
-    puts "Extent: #{extent}"
+    puts "Extent: #{swapchain_extent}"
 
-    create_swapchain(format, extent, swapchain_support.present_modes.first)
+    create_swapchain(format, swapchain_extent, swapchain_support.present_modes.first)
 
     image_count = 0_u32
     Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), nil)
@@ -161,11 +165,13 @@ class App
       view = nil.as(Vulkan::ImageView)
 
       if Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view)) != Vulkan::Result::VkSuccess
-        raise("failed to create image views!")
+        raise("failed to create image views")
       end
 
       swapchain_image_views[i] = view
     end
+
+    @pipeline = Pipeline.new(device, swapchain_extent)
 
     # -------------------- destroy
 
@@ -213,6 +219,8 @@ class App
 
   def destroy
     puts "destroying ..."
+
+    pipeline.destroy
 
     swapchain_image_views.each do |view|
       Vulkan.destroy_image_view(device, view, nil)
