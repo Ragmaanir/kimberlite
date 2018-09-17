@@ -39,6 +39,9 @@ class App
 
   getter render_pass : Vulkan::RenderPass = nil.as(Vulkan::RenderPass)
 
+  getter command_pool : Vulkan::CommandPool = nil.as(Vulkan::CommandPool)
+  getter command_buffers : Array(Vulkan::CommandBuffer) = [] of Vulkan::CommandBuffer
+
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
   end
@@ -204,6 +207,71 @@ class App
       framebuffers[i] = fb
     end
 
+    # -------------------- rendering setup
+
+    pool_info = Vulkan::CommandPoolCreateInfo.new
+    pool_info.s_type = Vulkan::StructureType::VkStructureTypeCommandPoolCreateInfo
+    pool_info.queue_family_index = 0 # FIXME graphics_family_idx
+    pool_info.flags = 0
+
+    if Vulkan.create_command_pool(device, pointerof(pool_info), nil, pointerof(@command_pool)) != Vulkan::Result::VkSuccess
+      raise("failed to create command pool")
+    end
+
+    @command_buffers = Array(Vulkan::CommandBuffer).new(framebuffers.size) { nil.as(Vulkan::CommandBuffer) }
+
+    alloc_info = Vulkan::CommandBufferAllocateInfo.new
+
+    alloc_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferAllocateInfo
+    alloc_info.command_pool = command_pool
+    alloc_info.level = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
+    alloc_info.command_buffer_count = command_buffers.size
+
+    if Vulkan.allocate_command_buffers(device, pointerof(alloc_info), command_buffers.to_unsafe) != Vulkan::Result::VkSuccess
+      raise("failed to allocate command buffers")
+    end
+
+    command_buffers.each_with_index do |buf, i|
+      begin_info = Vulkan::CommandBufferBeginInfo.new
+      begin_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferBeginInfo
+      begin_info.flags = Vulkan::CommandBufferUsageFlagBits::VkCommandBufferUsageSimultaneousUseBit
+      begin_info.p_inheritance_info = nil
+
+      if Vulkan.begin_command_buffer(buf, pointerof(begin_info)) != Vulkan::Result::VkSuccess
+        raise("failed to begin recording command buffer")
+      end
+
+      offset = Vulkan::Offset2D.new
+
+      pass_begin = Vulkan::RenderPassBeginInfo.new
+      pass_begin.s_type = Vulkan::StructureType::VkStructureTypeRenderPassBeginInfo
+      pass_begin.render_pass = render_pass
+      pass_begin.framebuffer = framebuffers[i]
+      pass_begin.render_area.offset = offset
+      pass_begin.render_area.extent = swapchain_extent
+
+      color = Vulkan::ClearValue.new
+      # color.r = 0.0_f32
+      # color.g = 0.0_f32
+      # color.b = 0.0_f32
+      # color.a = 1.0_f32
+
+      pass_begin.clear_value_count = 1
+      pass_begin.p_clear_values = pointerof(color)
+
+      Vulkan.cmd_begin_render_pass(buf, pointerof(pass_begin), Vulkan::SubpassContents::VkSubpassContentsInline)
+
+      Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline.pipeline)
+
+      Vulkan.cmd_draw(buf, 3, 1, 0, 0)
+
+      Vulkan.cmd_end_render_pass(buf)
+
+      if Vulkan.end_command_buffer(buf) != Vulkan::Result::VkSuccess
+        raise("failed to record command buffer")
+      end
+    end
+
     # -------------------- destroy
 
     destroy
@@ -282,6 +350,8 @@ class App
 
   def destroy
     puts "destroying ..."
+
+    Vulkan.destroy_command_pool(device, command_pool, nil)
 
     framebuffers.each do |fb|
       Vulkan.destroy_framebuffer(device, fb, nil)
