@@ -1,27 +1,31 @@
 class Pipeline
+  NULL_HANDLE = 0
+
   getter device : Vulkan::Device
   getter swapchain_extent : Vulkan::Extent2D
+  getter render_pass : Vulkan::RenderPass
 
   getter layout : Vulkan::PipelineLayout = nil.as(Vulkan::PipelineLayout)
+  getter pipeline : Vulkan::Pipeline = nil.as(Vulkan::Pipeline)
 
   getter vertex_shader : Vulkan::ShaderModule = nil.as(Vulkan::ShaderModule)
   getter fragment_shader : Vulkan::ShaderModule = nil.as(Vulkan::ShaderModule)
 
-  def initialize(@device, @swapchain_extent : Vulkan::Extent2D)
+  def initialize(@device, @swapchain_extent, @render_pass)
     @vertex_shader = create_shader_module(File.read("./examples/basic/vert.spv"))
     @fragment_shader = create_shader_module(File.read("./examples/basic/frag.spv"))
 
-    pipeline_infos = [
+    stages = [
       create_pipeline_shader_stage_create_info(vertex_shader, ShaderKind::Vertex),
       create_pipeline_shader_stage_create_info(fragment_shader, ShaderKind::Fragment),
     ]
 
-    info = Vulkan::PipelineVertexInputStateCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
-    info.vertex_binding_description_count = 0
-    info.p_vertex_binding_descriptions = nil
-    info.vertex_attribute_description_count = 0
-    info.p_vertex_attribute_descriptions = nil
+    vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
+    vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
+    vertex_info.vertex_binding_description_count = 0
+    vertex_info.p_vertex_binding_descriptions = nil
+    vertex_info.vertex_attribute_description_count = 0
+    vertex_info.p_vertex_attribute_descriptions = nil
 
     input = Vulkan::PipelineInputAssemblyStateCreateInfo.new
     input.s_type = Vulkan::StructureType::VkStructureTypePipelineInputAssemblyStateCreateInfo
@@ -102,9 +106,33 @@ class Pipeline
     if Vulkan.create_pipeline_layout(device, pointerof(layout_info), nil, pointerof(@layout)) != Vulkan::Result::VkSuccess
       raise("failed to create pipeline layout")
     end
+
+    info = Vulkan::GraphicsPipelineCreateInfo.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeGraphicsPipelineCreateInfo
+    info.stage_count = 2
+    info.p_stages = stages.to_unsafe
+    info.p_vertex_input_state = pointerof(vertex_info)
+    info.p_input_assembly_state = pointerof(input)
+    info.p_viewport_state = pointerof(viewport_info)
+    info.p_rasterization_state = pointerof(rasterizer)
+    info.p_multisample_state = pointerof(multisampling)
+    info.p_depth_stencil_state = nil
+    info.p_color_blend_state = pointerof(color_blending)
+    info.p_dynamic_state = nil
+    info.layout = layout
+
+    info.render_pass = render_pass
+    info.subpass = 0
+    info.base_pipeline_handle = nil.as(Vulkan::Pipeline)
+    info.base_pipeline_index = -1
+
+    if Vulkan.create_graphics_pipelines(device, nil.as(Vulkan::PipelineCache), 1, pointerof(info), nil, pointerof(@pipeline)) != Vulkan::Result::VkSuccess
+      raise("failed to create graphics pipeline")
+    end
   end
 
   def destroy
+    Vulkan.destroy_pipeline(device, pipeline, nil)
     Vulkan.destroy_pipeline_layout(device, layout, nil)
 
     Vulkan.destroy_shader_module(device, vertex_shader, nil)

@@ -31,9 +31,12 @@ class App
   getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
   getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
   getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
+  getter swapchain_image_format : Vulkan::Format = Vulkan::Format::VkFormatUndefined
   getter! swapchain_extent : Vulkan::Extent2D
 
   getter! pipeline : Pipeline
+
+  getter render_pass : Vulkan::RenderPass = nil.as(Vulkan::RenderPass)
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -117,6 +120,8 @@ class App
 
     format = select_swap_surface_format(swapchain_support.formats)
 
+    @swapchain_image_format = format.format
+
     puts "Swap Surface Fromat: #{format}"
     puts "Present modes: #{swapchain_support.present_modes}"
 
@@ -171,11 +176,45 @@ class App
       swapchain_image_views[i] = view
     end
 
-    @pipeline = Pipeline.new(device, swapchain_extent)
+    create_render_pass
+
+    @pipeline = Pipeline.new(device, swapchain_extent, render_pass)
 
     # -------------------- destroy
 
     destroy
+  end
+
+  def create_render_pass
+    color_att = Vulkan::AttachmentDescription.new
+    color_att.format = swapchain_image_format
+    color_att.samples = Vulkan::SampleCountFlagBits::VkSampleCount1Bit
+    color_att.load_op = Vulkan::AttachmentLoadOp::VkAttachmentLoadOpClear
+    color_att.store_op = Vulkan::AttachmentStoreOp::VkAttachmentStoreOpStore
+    color_att.stencil_load_op = Vulkan::AttachmentLoadOp::VkAttachmentLoadOpDontCare
+    color_att.stencil_store_op = Vulkan::AttachmentStoreOp::VkAttachmentStoreOpDontCare
+    color_att.initial_layout = Vulkan::ImageLayout::VkImageLayoutUndefined
+    color_att.final_layout = Vulkan::ImageLayout::VkImageLayoutPresentSrcKhr
+
+    color_att_ref = Vulkan::AttachmentReference.new
+    color_att_ref.attachment = 0
+    color_att_ref.layout = Vulkan::ImageLayout::VkImageLayoutColorAttachmentOptimal
+
+    subpass = Vulkan::SubpassDescription.new
+    subpass.pipeline_bind_point = Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics
+    subpass.color_attachment_count = 1
+    subpass.p_color_attachments = pointerof(color_att_ref)
+
+    pass_info = Vulkan::RenderPassCreateInfo.new
+    pass_info.s_type = Vulkan::StructureType::VkStructureTypeRenderPassCreateInfo
+    pass_info.attachment_count = 1
+    pass_info.p_attachments = pointerof(color_att)
+    pass_info.subpass_count = 1
+    pass_info.p_subpasses = pointerof(subpass)
+
+    if Vulkan.create_render_pass(device, pointerof(pass_info), nil, pointerof(@render_pass)) != Vulkan::Result::VkSuccess
+      raise("failed to create render pass")
+    end
   end
 
   def create_swapchain(format, extent, mode)
@@ -221,6 +260,8 @@ class App
     puts "destroying ..."
 
     pipeline.destroy
+
+    Vulkan.destroy_render_pass(device, render_pass, nil)
 
     swapchain_image_views.each do |view|
       Vulkan.destroy_image_view(device, view, nil)
