@@ -29,6 +29,7 @@ class App
   getter swapchain_support : SwapChainSupport = SwapChainSupport.new
   getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
   getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
+  getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -139,6 +140,33 @@ class App
     @swapchain_images = Array(Vulkan::Image).new(image_count) { nil.as(Vulkan::Image) }
     Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), swapchain_images.to_unsafe)
 
+    @swapchain_image_views = Array(Vulkan::ImageView).new(image_count) { nil.as(Vulkan::ImageView) }
+
+    swapchain_images.each_with_index do |image, i|
+      info = Vulkan::ImageViewCreateInfo.new
+      info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
+      info.image = image
+      info.view_type = Vulkan::ImageViewType::VkImageViewType2D
+      info.format = format.format
+      info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+      info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+      info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+      info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+      info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
+      info.subresource_range.base_mip_level = 0
+      info.subresource_range.level_count = 1
+      info.subresource_range.base_array_layer = 0
+      info.subresource_range.layer_count = 1
+
+      view = nil.as(Vulkan::ImageView)
+
+      if Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view)) != Vulkan::Result::VkSuccess
+        raise("failed to create image views!")
+      end
+
+      swapchain_image_views[i] = view
+    end
+
     # -------------------- destroy
 
     destroy
@@ -185,6 +213,11 @@ class App
 
   def destroy
     puts "destroying ..."
+
+    swapchain_image_views.each do |view|
+      Vulkan.destroy_image_view(device, view, nil)
+    end
+
     Vulkan.destroy_swapchain_khr(device, swapchain, nil)
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
