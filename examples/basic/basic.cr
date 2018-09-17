@@ -33,6 +33,7 @@ class App
   getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
   getter swapchain_image_format : Vulkan::Format = Vulkan::Format::VkFormatUndefined
   getter! swapchain_extent : Vulkan::Extent2D
+  getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
 
   getter! pipeline : Pipeline
 
@@ -180,6 +181,29 @@ class App
 
     @pipeline = Pipeline.new(device, swapchain_extent, render_pass)
 
+    @framebuffers = Array(Vulkan::Framebuffer).new(swapchain_image_views.size) { nil.as(Vulkan::Framebuffer) }
+
+    swapchain_image_views.each_with_index do |view, i|
+      attachments = [view]
+
+      fb_info = Vulkan::FramebufferCreateInfo.new
+      fb_info.s_type = Vulkan::StructureType::VkStructureTypeFramebufferCreateInfo
+      fb_info.render_pass = render_pass
+      fb_info.attachment_count = 1
+      fb_info.p_attachments = attachments
+      fb_info.width = swapchain_extent.width
+      fb_info.height = swapchain_extent.height
+      fb_info.layers = 1
+
+      fb = nil.as(Vulkan::Framebuffer)
+
+      if Vulkan.create_framebuffer(device, pointerof(fb_info), nil, pointerof(fb)) != Vulkan::Result::VkSuccess
+        raise("failed to create framebuffer")
+      end
+
+      framebuffers[i] = fb
+    end
+
     # -------------------- destroy
 
     destroy
@@ -258,6 +282,10 @@ class App
 
   def destroy
     puts "destroying ..."
+
+    framebuffers.each do |fb|
+      Vulkan.destroy_framebuffer(device, fb, nil)
+    end
 
     pipeline.destroy
 
