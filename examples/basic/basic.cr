@@ -331,6 +331,8 @@ class App
     present_info.p_results = nil
 
     Vulkan.queue_present_khr(present_queue, pointerof(present_info))
+
+    Vulkan.queue_wait_idle(present_queue)
   end
 
   def create_render_pass

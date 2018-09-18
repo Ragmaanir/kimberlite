@@ -1,6 +1,5 @@
 /docs/
 /lib/
-/bin/
 /.shards/
 *.dwarf
 
@@ -9,3 +8,4 @@
 /shard.lock
 
 /sdks/
+/examples/basic/*.spv

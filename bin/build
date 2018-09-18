@@ -1,0 +1,6 @@
+#!/bin/bash
+export VULKAN_VERSION=`cat ./VULKAN_VERSION`
+wget -nc https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION/linux/vulkansdk-linux-x86_64-$VULKAN_VERSION.tar.gz -O ./sdks/vulkansdk-linux-x86_64-$VULKAN_VERSION.tar.gz
+sudo docker build . -t kimberlite &&
+sudo docker run kimberlite /bin/sh -c "./main /root/self/src/kimberlite/libvulkan.base.cr" > src/kimberlite/libvulkan.cr &&
+crystal run ./src/kimberlite/postprocess_libvulkan.cr
