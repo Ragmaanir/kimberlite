@@ -1,0 +1,3 @@
+#!/bin/bash
+sudo docker run -v $(pwd)/examples/mantle:/root/mount kimberlite /bin/sh -c "/root/vulkan/x86_64/bin/glslangValidator -V /root/mount/basic.vert; cp /root/vert.spv /root/mount; /root/vulkan/x86_64/bin/glslangValidator -V /root/mount/basic.frag; cp /root/frag.spv /root/mount" &&
+crystal run examples/mantle/app.cr
