@@ -4,7 +4,9 @@ require "./pipeline"
 
 class App
   def self.call
-    new
+    a = new
+    a.run
+    a.destroy
   end
 
   class SwapChainSupport
@@ -41,6 +43,9 @@ class App
 
   getter command_pool : Vulkan::CommandPool = nil.as(Vulkan::CommandPool)
   getter command_buffers : Array(Vulkan::CommandBuffer) = [] of Vulkan::CommandBuffer
+
+  getter image_available_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
+  getter render_finished_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
 
   def version(major : Int32, minor : Int32, patch : Int32)
     (major << 22) | (minor << 12) | patch
@@ -272,12 +277,71 @@ class App
       end
     end
 
-    # -------------------- destroy
+    @image_available_semaphore = create_semaphore
+    @render_finished_semaphore = create_semaphore
+  end
 
-    destroy
+  def run
+    while LibGLFW.window_should_close(window) == 0
+      LibGLFW.poll_events
+      draw_frame
+    end
+
+    Vulkan.device_wait_idle(device)
+  end
+
+  def draw_frame
+    image_index = 0_u32
+    Vulkan.acquire_next_image_khr(device, swapchain, UInt64::MAX, image_available_semaphore, nil, pointerof(image_index))
+
+    submit_info = Vulkan::SubmitInfo.new
+    submit_info.s_type = Vulkan::StructureType::VkStructureTypeSubmitInfo
+
+    wait_semaphores = [image_available_semaphore] of Vulkan::Semaphore
+
+    wait_stages = [Vulkan::PipelineStageFlagBits::VkPipelineStageColorAttachmentOutputBit.to_u32] of Vulkan::PipelineStageFlags
+
+    submit_info.wait_semaphore_count = 1
+    submit_info.p_wait_semaphores = wait_semaphores.to_unsafe
+    submit_info.p_wait_dst_stage_mask = wait_stages.to_unsafe
+
+    submit_info.command_buffer_count = 1
+    cmd_buf = command_buffers[image_index]
+    submit_info.p_command_buffers = pointerof(cmd_buf)
+
+    signal_semaphores = [render_finished_semaphore] of Vulkan::Semaphore
+    submit_info.signal_semaphore_count = 1
+    submit_info.p_signal_semaphores = signal_semaphores
+
+    if Vulkan.queue_submit(graphics_queue, 1, pointerof(submit_info), nil) != Vulkan::Result::VkSuccess
+      raise("failed to submit draw command buffer")
+    end
+
+    present_info = Vulkan::PresentInfoKhr.new
+    present_info.s_type = Vulkan::StructureType::VkStructureTypePresentInfoKhr
+
+    present_info.wait_semaphore_count = 1
+    present_info.p_wait_semaphores = signal_semaphores.to_unsafe
+
+    swapchains = [swapchain] of Vulkan::SwapchainKhr
+
+    present_info.swapchain_count = 1
+    present_info.p_swapchains = swapchains
+    present_info.p_image_indices = pointerof(image_index)
+    present_info.p_results = nil
+
+    Vulkan.queue_present_khr(present_queue, pointerof(present_info))
   end
 
   def create_render_pass
+    dependency = Vulkan::SubpassDependency.new
+    dependency.src_subpass = ~0 # FIXME: VK_SUBPASS_EXTERNAL
+    dependency.dst_subpass = 0
+    dependency.src_stage_mask = Vulkan::PipelineStageFlagBits::VkPipelineStageColorAttachmentOutputBit
+    dependency.src_access_mask = 0
+    dependency.dst_stage_mask = Vulkan::PipelineStageFlagBits::VkPipelineStageColorAttachmentOutputBit
+    dependency.dst_access_mask = Vulkan::AccessFlagBits::VkAccessColorAttachmentReadBit | Vulkan::AccessFlagBits::VkAccessColorAttachmentWriteBit
+
     color_att = Vulkan::AttachmentDescription.new
     color_att.format = swapchain_image_format
     color_att.samples = Vulkan::SampleCountFlagBits::VkSampleCount1Bit
@@ -303,6 +367,8 @@ class App
     pass_info.p_attachments = pointerof(color_att)
     pass_info.subpass_count = 1
     pass_info.p_subpasses = pointerof(subpass)
+    pass_info.dependency_count = 1
+    pass_info.p_dependencies = pointerof(dependency)
 
     if Vulkan.create_render_pass(device, pointerof(pass_info), nil, pointerof(@render_pass)) != Vulkan::Result::VkSuccess
       raise("failed to create render pass")
@@ -337,6 +403,19 @@ class App
     end
   end
 
+  def create_semaphore
+    sem = nil.as(Vulkan::Semaphore)
+
+    info = Vulkan::SemaphoreCreateInfo.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeSemaphoreCreateInfo
+
+    if Vulkan.create_semaphore(device, pointerof(info), nil, pointerof(sem)) != Vulkan::Result::VkSuccess
+      raise("Semaphore creation failed")
+    end
+
+    sem
+  end
+
   def print_physical_device_properties(device : Vulkan::PhysicalDevice)
     props = Vulkan::PhysicalDeviceProperties.new
     features = Vulkan::PhysicalDeviceFeatures.new
@@ -350,6 +429,9 @@ class App
 
   def destroy
     puts "destroying ..."
+
+    Vulkan.destroy_semaphore(device, render_finished_semaphore, nil)
+    Vulkan.destroy_semaphore(device, image_available_semaphore, nil)
 
     Vulkan.destroy_command_pool(device, command_pool, nil)
 
@@ -479,8 +561,8 @@ class App
       format.color_space = Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
       format
     else
-      candidates.find do |format|
-        format.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && format.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
+      candidates.find do |c|
+        c.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && c.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
       end || candidates[0]
     end
   end
