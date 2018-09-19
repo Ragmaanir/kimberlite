@@ -103,7 +103,12 @@ class App
     print_physical_device_properties(physical_device)
 
     # -------------------- create logical device
-    create_logical_device
+
+    idx = Mantle.get_single_graphics_queue_index(physical_device, surface)
+    @device, queue_hash = Mantle.create_logical_device(physical_device, {idx => [1.0_f32]}, ["VK_KHR_swapchain"], ["VK_LAYER_LUNARG_standard_validation"])
+
+    @graphics_queue = queue_hash[idx].first
+    @present_queue = graphics_queue
 
     query_swapchain_support_details
 
@@ -441,76 +446,6 @@ class App
     )
 
     Vulkan.destroy_instance(instance, nil)
-  end
-
-  def create_logical_device
-    # ---------- queue families
-    families = Mantle.enumerate_queue_families(physical_device)
-
-    puts "Queue Families: #{families.size}"
-
-    # ---------- graphics family
-    graphics_family_idx = families.index do |family|
-      family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
-    end || raise("Graphics Queue not found")
-
-    puts "Graphics Queue Index: #{graphics_family_idx}"
-
-    # ---------- present family
-    present_family_idx = nil
-
-    families.each_with_index do |family, i|
-      present = 0_u32
-      Vulkan.get_physical_device_surface_support_khr(physical_device, i, surface, pointerof(present))
-
-      if family.queue_count > 0 && present
-        present_family_idx = i
-        break
-      end
-    end
-
-    present_family_idx = present_family_idx || raise("Present Queue not found")
-
-    # ---------- queue create infos
-    queue_infos = [graphics_family_idx, present_family_idx].uniq.map do |queue_idx|
-      queue_info = Vulkan::DeviceQueueCreateInfo.new
-      queue_info.s_type = Vulkan::StructureType::VkStructureTypeDeviceQueueCreateInfo
-      queue_info.queue_family_index = queue_idx
-      queue_info.queue_count = 1
-
-      priority = 1.0_f32
-      queue_info.p_queue_priorities = pointerof(priority)
-
-      queue_info
-    end
-
-    # ---------- logical device info
-    features = Vulkan::PhysicalDeviceFeatures.new
-
-    exts = ["VK_KHR_swapchain".to_unsafe]
-
-    info = Vulkan::DeviceCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeDeviceCreateInfo
-
-    info.queue_create_info_count = queue_infos.size
-    info.p_queue_create_infos = queue_infos.to_unsafe
-
-    info.p_enabled_features = pointerof(features)
-
-    info.enabled_extension_count = exts.size
-    info.pp_enabled_extension_names = exts.to_unsafe
-
-    info.enabled_layer_count = 1
-    info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
-
-    # ---------- create logical device
-
-    if Vulkan.create_device(physical_device, pointerof(info), nil, pointerof(@device)) != Vulkan::Result::VkSuccess
-      raise("failed to create logical device!")
-    end
-
-    Vulkan.get_device_queue(device, graphics_family_idx.to_u32, 0, pointerof(@graphics_queue))
-    Vulkan.get_device_queue(device, present_family_idx.to_u32, 0, pointerof(@present_queue))
   end
 
   def query_swapchain_support_details
