@@ -22,6 +22,7 @@ class App
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
   getter device : Vulkan::Device = nil.as(Vulkan::Device)
+  getter debug_callback_handle : Vulkan::DebugUtilsMessengerExt = nil.as(Vulkan::DebugUtilsMessengerExt)
 
   getter graphics_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
   getter present_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
@@ -74,7 +75,14 @@ class App
     @instance = Mantle.create_instance("App", "Engine", extensions, ["VK_LAYER_LUNARG_standard_validation"])
 
     # -------------------- debug callback
-    register_debug_callback
+
+    debug_callback = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
+      puts "#{severity}: #{String.new(data.value.p_message)}"
+
+      0_u32
+    }
+
+    @debug_callback_handle = Mantle.register_debug_callback(instance, self, debug_callback)
 
     # -------------------- glfw window
     LibGLFW.window_hint(LibGLFW::CLIENT_API, LibGLFW::NO_API)
@@ -424,7 +432,14 @@ class App
     Vulkan.destroy_swapchain_khr(device, swapchain, nil)
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
-    destroy_debug_utils_messenger_ext(instance, @debug_callback.pointer.as(Vulkan::DebugUtilsMessengerExt), nil.as(Vulkan::AllocationCallbacks*))
+
+    Mantle.destroy_debug_utils_messenger_ext(
+      instance,
+      instance,
+      debug_callback_handle,
+      nil.as(Vulkan::AllocationCallbacks*)
+    )
+
     Vulkan.destroy_instance(instance, nil)
   end
 
@@ -540,41 +555,6 @@ class App
       end || candidates[0]
     end
   end
-
-  getter debug_callback : (Vulkan::DebugUtilsMessageSeverityFlagBitsExt, Vulkan::DebugUtilsMessageTypeFlagsExt, Vulkan::DebugUtilsMessengerCallbackDataExt*, Void*) -> UInt32 = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
-    puts "#{severity}: #{String.new(data.value.p_message)}"
-    # app = user_data.as(App)
-
-    0_u32
-  }
-
-  def register_debug_callback
-    info = Vulkan::DebugUtilsMessengerCreateInfoExt.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeDebugUtilsMessengerCreateInfoExt
-    info.message_severity = Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityVerboseBitExt | Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityWarningBitExt | Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityErrorBitExt
-    info.message_type = Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeGeneralBitExt | Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeValidationBitExt | Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypePerformanceBitExt
-    info.pfn_user_callback = debug_callback
-
-    info.p_user_data = self.as(Void*)
-
-    if (create_debug_utils_messenger_ext(instance, pointerof(info), Pointer(Vulkan::AllocationCallbacks).null, pointerof(@debug_callback).as(Pointer(Vulkan::DebugUtilsMessengerExt))) != Vulkan::Result::VkSuccess)
-      raise("failed to set up debug callback!")
-    end
-  end
-
-  macro define_vulkan_function(meth, name, type)
-    def {{meth}}(*args)
-      pointer = Vulkan.get_instance_proc_addr(instance, {{name}})
-      func = {{type}}.new(pointer.pointer, pointer.closure_data)
-
-      raise "Could not link: #{ {{name}} }" unless func
-
-      func.call(*args)
-    end
-  end
-
-  define_vulkan_function(create_debug_utils_messenger_ext, "vkCreateDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerCreateInfoExt*, Vulkan::AllocationCallbacks*, Vulkan::DebugUtilsMessengerExt*, Vulkan::Result))
-  define_vulkan_function(destroy_debug_utils_messenger_ext, "vkDestroyDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerExt, Vulkan::AllocationCallbacks*, Void))
 end
 
 App.call

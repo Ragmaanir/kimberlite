@@ -22,8 +22,8 @@ TODO: Write usage instructions here
 
 ## Development
 
-- [] Keep some `vulkan.h` namings instead of converting to crystal convention so copy&paste is simpler (?)
-- [] Remove prefixes from enum values (e.g `PresentModeKhr` in `VkPresentModeImmediateKhr`)
+- [ ] Keep some `vulkan.h` namings instead of converting to crystal convention so copy&paste is simpler (?)
+- [ ] Remove prefixes from enum values (e.g `PresentModeKhr` in `VkPresentModeImmediateKhr`)
 
 Use `bin/build` to generate `libvulkan.cr`:
 

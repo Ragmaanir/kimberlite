@@ -96,6 +96,53 @@ module Kimberlite
       instance
     end
 
+    def self.register_debug_callback(instance : Vulkan::Instance, user_data : T, callback : (Vulkan::DebugUtilsMessageSeverityFlagBitsExt, Vulkan::DebugUtilsMessageTypeFlagsExt, Vulkan::DebugUtilsMessengerCallbackDataExt*, Void*) -> UInt32) forall T
+      info = Vulkan::DebugUtilsMessengerCreateInfoExt.new
+      info.s_type = Vulkan::StructureType::VkStructureTypeDebugUtilsMessengerCreateInfoExt
+
+      info.message_severity =
+        Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityVerboseBitExt |
+          Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityWarningBitExt |
+          Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityErrorBitExt
+
+      info.message_type =
+        Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeGeneralBitExt |
+          Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeValidationBitExt |
+          Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypePerformanceBitExt
+
+      info.pfn_user_callback = callback
+
+      info.p_user_data = user_data.as(Void*)
+
+      handle = nil.as(Vulkan::DebugUtilsMessengerExt)
+
+      result = create_debug_utils_messenger_ext(
+        instance,
+        instance,
+        pointerof(info),
+        Pointer(Vulkan::AllocationCallbacks).null,
+        pointerof(handle)
+      )
+
+      assert_success(result)
+
+      handle
+    end
+
+    macro define_vulkan_function(meth, name, type)
+      def self.{{meth}}(instance : Vulkan::Instance, *args)
+        pointer = Vulkan.get_instance_proc_addr(instance, {{name}})
+        func = {{type}}.new(pointer.pointer, pointer.closure_data)
+
+        raise "Could not link: #{ {{name}} }" unless func
+
+        func.call(*args)
+      end
+    end
+
+    define_vulkan_function(create_debug_utils_messenger_ext, "vkCreateDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerCreateInfoExt*, Vulkan::AllocationCallbacks*, Vulkan::DebugUtilsMessengerExt*, Vulkan::Result))
+    define_vulkan_function(destroy_debug_utils_messenger_ext, "vkDestroyDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerExt, Vulkan::AllocationCallbacks*, Void))
+
     def self.assert_success(result : Vulkan::Result)
       if result != Vulkan::Result::VkSuccess
         raise ResultException.new(result)
