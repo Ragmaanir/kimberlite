@@ -76,7 +76,7 @@ class App
 
     # -------------------- debug callback
 
-    debug_callback = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
+    debug_callback = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, _type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, _user_data : Void*) {
       puts "#{severity}: #{String.new(data.value.p_message)}"
 
       0_u32
