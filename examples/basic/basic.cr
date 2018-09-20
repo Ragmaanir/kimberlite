@@ -550,10 +550,6 @@ class App
     end
   end
 
-  def swapchain_supported?
-    !swapchain_support.formats.empty? && !swapchain_support.present_modes.empty?
-  end
-
   def select_swap_surface_format(candidates : Array(Vulkan::SurfaceFormatKhr)) : Vulkan::SurfaceFormatKhr
     if candidates.empty?
       raise "No candidates given"

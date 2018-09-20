@@ -21,11 +21,8 @@ class App
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
 
   getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
-  getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
-  getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
-  getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
-  getter swapchain_image_format : Vulkan::Format = Vulkan::Format::VkFormatUndefined
-  getter! swapchain_extent : Vulkan::Extent2D
+  getter! swapchain : Mantle::Swapchain
+
   getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
 
   getter! pipeline : Pipeline
@@ -100,74 +97,40 @@ class App
     @graphics_queue = queue_hash[idx].first
     @present_queue = graphics_queue
 
-    # query_swapchain_support_details
     @swapchain_support = Mantle.get_swapchain_support_details(physical_device, surface)
 
-    format = select_swap_surface_format(swapchain_support.formats)
-
-    @swapchain_image_format = format.format
+    format = Mantle.select_standard_swap_surface_format(swapchain_support.formats)
 
     puts "Swap Surface Fromat: #{format}"
     puts "Present modes: #{swapchain_support.present_modes}"
 
     caps = swapchain_support.capabilities
 
-    @swapchain_extent = if caps.current_extent.width != UInt32::MAX
-                          caps.current_extent
-                        else
-                          ext = Vulkan::Extent2D.new
-                          ext.width = 800
-                          ext.height = 600
+    extent = if caps.current_extent.width != UInt32::MAX
+               caps.current_extent
+             else
+               ext = Vulkan::Extent2D.new
+               ext.width = 800
+               ext.height = 600
 
-                          ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
-                          ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
+               ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
+               ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
 
-                          ext
-                        end
+               ext
+             end
 
-    puts "Extent: #{swapchain_extent}"
+    puts "Extent: #{extent}"
 
-    create_swapchain(format, swapchain_extent, swapchain_support.present_modes.first)
-
-    image_count = 0_u32
-    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), nil)
-    @swapchain_images = Array(Vulkan::Image).new(image_count) { nil.as(Vulkan::Image) }
-    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), swapchain_images.to_unsafe)
-
-    @swapchain_image_views = Array(Vulkan::ImageView).new(image_count) { nil.as(Vulkan::ImageView) }
-
-    swapchain_images.each_with_index do |image, i|
-      info = Vulkan::ImageViewCreateInfo.new
-      info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
-      info.image = image
-      info.view_type = Vulkan::ImageViewType::VkImageViewType2D
-      info.format = format.format
-      info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
-      info.subresource_range.base_mip_level = 0
-      info.subresource_range.level_count = 1
-      info.subresource_range.base_array_layer = 0
-      info.subresource_range.layer_count = 1
-
-      view = nil.as(Vulkan::ImageView)
-
-      if Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view)) != Vulkan::Result::VkSuccess
-        raise("failed to create image views")
-      end
-
-      swapchain_image_views[i] = view
-    end
+    mode = swapchain_support.present_modes.first
+    @swapchain = Mantle::Swapchain.standard_swapchain(device, physical_device, surface, format, extent, mode)
 
     create_render_pass
 
-    @pipeline = Pipeline.new(device, swapchain_extent, render_pass)
+    @pipeline = Pipeline.new(device, swapchain.extent, render_pass)
 
-    @framebuffers = Array(Vulkan::Framebuffer).new(swapchain_image_views.size) { nil.as(Vulkan::Framebuffer) }
+    @framebuffers = Array(Vulkan::Framebuffer).new(swapchain.views.size) { nil.as(Vulkan::Framebuffer) }
 
-    swapchain_image_views.each_with_index do |view, i|
+    swapchain.views.each_with_index do |view, i|
       attachments = [view]
 
       fb_info = Vulkan::FramebufferCreateInfo.new
@@ -175,8 +138,8 @@ class App
       fb_info.render_pass = render_pass
       fb_info.attachment_count = 1
       fb_info.p_attachments = attachments
-      fb_info.width = swapchain_extent.width
-      fb_info.height = swapchain_extent.height
+      fb_info.width = swapchain.extent.width
+      fb_info.height = swapchain.extent.height
       fb_info.layers = 1
 
       fb = nil.as(Vulkan::Framebuffer)
@@ -229,7 +192,7 @@ class App
       pass_begin.render_pass = render_pass
       pass_begin.framebuffer = framebuffers[i]
       pass_begin.render_area.offset = offset
-      pass_begin.render_area.extent = swapchain_extent
+      pass_begin.render_area.extent = swapchain.extent
 
       color = Vulkan::ClearValue.new
       # color.r = 0.0_f32
@@ -268,7 +231,7 @@ class App
 
   def draw_frame
     image_index = 0_u32
-    Vulkan.acquire_next_image_khr(device, swapchain, UInt64::MAX, image_available_semaphore, nil, pointerof(image_index))
+    Vulkan.acquire_next_image_khr(device, swapchain.object, UInt64::MAX, image_available_semaphore, nil, pointerof(image_index))
 
     submit_info = Vulkan::SubmitInfo.new
     submit_info.s_type = Vulkan::StructureType::VkStructureTypeSubmitInfo
@@ -299,7 +262,7 @@ class App
     present_info.wait_semaphore_count = 1
     present_info.p_wait_semaphores = signal_semaphores.to_unsafe
 
-    swapchains = [swapchain] of Vulkan::SwapchainKhr
+    swapchains = [swapchain.object] of Vulkan::SwapchainKhr
 
     present_info.swapchain_count = 1
     present_info.p_swapchains = swapchains
@@ -321,7 +284,7 @@ class App
     dependency.dst_access_mask = Vulkan::AccessFlagBits::VkAccessColorAttachmentReadBit | Vulkan::AccessFlagBits::VkAccessColorAttachmentWriteBit
 
     color_att = Vulkan::AttachmentDescription.new
-    color_att.format = swapchain_image_format
+    color_att.format = swapchain.format
     color_att.samples = Vulkan::SampleCountFlagBits::VkSampleCount1Bit
     color_att.load_op = Vulkan::AttachmentLoadOp::VkAttachmentLoadOpClear
     color_att.store_op = Vulkan::AttachmentStoreOp::VkAttachmentStoreOpStore
@@ -350,34 +313,6 @@ class App
 
     if Vulkan.create_render_pass(device, pointerof(pass_info), nil, pointerof(@render_pass)) != Vulkan::Result::VkSuccess
       raise("failed to create render pass")
-    end
-  end
-
-  def create_swapchain(format, extent, mode)
-    info = Vulkan::SwapchainCreateInfoKhr.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeSwapchainCreateInfoKhr
-    info.surface = surface
-    info.min_image_count = 2
-    info.image_format = format.format
-    info.image_color_space = format.color_space
-    info.image_extent = extent
-    info.image_array_layers = 1
-    info.image_usage = Vulkan::ImageUsageFlagBits::VkImageUsageColorAttachmentBit
-
-    raise "TODO: graphics queue != present queue" if graphics_queue != present_queue
-
-    info.image_sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
-    info.queue_family_index_count = 0
-    info.p_queue_family_indices = nil
-
-    info.pre_transform = swapchain_support.capabilities.current_transform
-    info.composite_alpha = Vulkan::CompositeAlphaFlagBitsKhr::VkCompositeAlphaOpaqueBitKhr
-    info.present_mode = mode
-    info.clipped = 1
-    info.old_swapchain = nil
-
-    if Vulkan.create_swapchain_khr(device, pointerof(info), nil, pointerof(@swapchain)) != Vulkan::Result::VkSuccess
-      raise("failed to create swap chain!")
     end
   end
 
@@ -421,11 +356,8 @@ class App
 
     Vulkan.destroy_render_pass(device, render_pass, nil)
 
-    swapchain_image_views.each do |view|
-      Vulkan.destroy_image_view(device, view, nil)
-    end
+    swapchain.destroy
 
-    Vulkan.destroy_swapchain_khr(device, swapchain, nil)
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
 
@@ -437,25 +369,6 @@ class App
     )
 
     Vulkan.destroy_instance(instance, nil)
-  end
-
-  def swapchain_supported?
-    !swapchain_support.formats.empty? && !swapchain_support.present_modes.empty?
-  end
-
-  def select_swap_surface_format(candidates : Array(Vulkan::SurfaceFormatKhr)) : Vulkan::SurfaceFormatKhr
-    if candidates.empty?
-      raise "No candidates given"
-    elsif candidates.size == 1 && candidates[0].format == Vulkan::Format::VkFormatUndefined
-      format = Vulkan::SurfaceFormatKhr.new
-      format.format = Vulkan::Format::VkFormatB8G8R8A8Unorm
-      format.color_space = Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
-      format
-    else
-      candidates.find do |c|
-        c.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && c.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
-      end || candidates[0]
-    end
   end
 end
 

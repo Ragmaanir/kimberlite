@@ -267,6 +267,131 @@ module Kimberlite
       end
     end
 
+    class Swapchain
+      getter device : Vulkan::Device
+      getter physical_device : Vulkan::PhysicalDevice
+
+      getter object : Vulkan::SwapchainKhr
+      getter format : Vulkan::Format
+      getter extent : Vulkan::Extent2D
+
+      getter images : Array(Vulkan::Image) = [] of Vulkan::Image
+      getter views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
+
+      def self.standard_swapchain(device : Vulkan::Device, physical_device : Vulkan::PhysicalDevice, surface : Vulkan::SurfaceKhr, format : Vulkan::SurfaceFormatKhr, extent : Vulkan::Extent2D, mode : Vulkan::PresentModeKhr, transform : Vulkan::SurfaceTransformFlagBitsKhr? = nil)
+        if !transform
+          capabilities = Vulkan::SurfaceCapabilitiesKhr.new
+
+          Vulkan.get_physical_device_surface_capabilities_khr(physical_device, surface, pointerof(capabilities))
+
+          transform = capabilities.current_transform
+        end
+
+        info = Mantle.standard_swapchain_parameters(surface, format, extent, mode, transform)
+
+        new(device, physical_device, info)
+      end
+
+      def initialize(@device : Vulkan::Device, @physical_device : Vulkan::PhysicalDevice, swapchain_info : Vulkan::SwapchainCreateInfoKhr)
+        @object = Mantle.create_swapchain(device, swapchain_info)
+        @format = swapchain_info.image_format
+        @extent = swapchain_info.image_extent
+
+        @images = Mantle.get_swapchain_images(device, object)
+
+        @views = Array(Vulkan::ImageView).new(images.size) { nil.as(Vulkan::ImageView) }
+
+        images.each_with_index do |image, i|
+          info = Vulkan::ImageViewCreateInfo.new
+          info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
+          info.image = image
+          info.view_type = Vulkan::ImageViewType::VkImageViewType2D
+          info.format = format
+          info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+          info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+          info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+          info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+          info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
+          info.subresource_range.base_mip_level = 0
+          info.subresource_range.level_count = 1
+          info.subresource_range.base_array_layer = 0
+          info.subresource_range.layer_count = 1
+
+          view = nil.as(Vulkan::ImageView)
+
+          res = Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view))
+          Mantle.assert_success(res)
+
+          views[i] = view
+        end
+      end
+
+      def destroy
+        views.each do |view|
+          Vulkan.destroy_image_view(device, view, nil)
+        end
+
+        Vulkan.destroy_swapchain_khr(device, object, nil)
+      end
+    end
+
+    def self.select_standard_swap_surface_format(candidates : Array(Vulkan::SurfaceFormatKhr)) : Vulkan::SurfaceFormatKhr
+      if candidates.empty?
+        raise "No candidates given"
+      elsif candidates.size == 1 && candidates[0].format == Vulkan::Format::VkFormatUndefined
+        format = Vulkan::SurfaceFormatKhr.new
+        format.format = Vulkan::Format::VkFormatB8G8R8A8Unorm
+        format.color_space = Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
+        format
+      else
+        candidates.find do |c|
+          c.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && c.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
+        end || candidates[0]
+      end
+    end
+
+    def self.standard_swapchain_parameters(surface : Vulkan::SurfaceKhr, format : Vulkan::SurfaceFormatKhr, extent : Vulkan::Extent2D, mode : Vulkan::PresentModeKhr, transform : Vulkan::SurfaceTransformFlagBitsKhr) : Vulkan::SwapchainCreateInfoKhr
+      info = Vulkan::SwapchainCreateInfoKhr.new
+      info.s_type = Vulkan::StructureType::VkStructureTypeSwapchainCreateInfoKhr
+      info.surface = surface
+      info.min_image_count = 2
+      info.image_format = format.format
+      info.image_color_space = format.color_space
+      info.image_extent = extent
+      info.image_array_layers = 1
+      info.image_usage = Vulkan::ImageUsageFlagBits::VkImageUsageColorAttachmentBit
+
+      # FIXME assuming graphics queue == present queue
+      info.image_sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
+      info.queue_family_index_count = 0
+      info.p_queue_family_indices = nil
+
+      info.pre_transform = transform
+      info.composite_alpha = Vulkan::CompositeAlphaFlagBitsKhr::VkCompositeAlphaOpaqueBitKhr
+      info.present_mode = mode
+      info.clipped = 1
+      info.old_swapchain = nil
+
+      info
+    end
+
+    def self.create_swapchain(device : Vulkan::Device, info : Vulkan::SwapchainCreateInfoKhr) : Vulkan::SwapchainKhr
+      swapchain = nil.as(Vulkan::SwapchainKhr)
+      result = Vulkan.create_swapchain_khr(device, pointerof(info), nil, pointerof(swapchain))
+      assert_success(result)
+      swapchain
+    end
+
+    def self.get_swapchain_images(device : Vulkan::Device, swapchain : Vulkan::SwapchainKhr) : Array(Vulkan::Image)
+      image_count = 0_u32
+      Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), nil)
+
+      swapchain_images = Array(Vulkan::Image).new(image_count) { nil.as(Vulkan::Image) }
+      Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), swapchain_images.to_unsafe)
+
+      swapchain_images
+    end
+
     def self.assert_success(result : Vulkan::Result)
       if result != Vulkan::Result::VkSuccess
         raise ResultException.new(result)
