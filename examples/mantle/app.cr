@@ -9,16 +9,6 @@ class App
     a.destroy
   end
 
-  class SwapChainSupport
-    property capabilities : Vulkan::SurfaceCapabilitiesKhr = Vulkan::SurfaceCapabilitiesKhr.new
-    property formats : Array(Vulkan::SurfaceFormatKhr) = [] of Vulkan::SurfaceFormatKhr
-    property present_modes : Array(Vulkan::PresentModeKhr) = [] of Vulkan::PresentModeKhr
-
-    def capabilities_ptr
-      pointerof(@capabilities)
-    end
-  end
-
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
   getter device : Vulkan::Device = nil.as(Vulkan::Device)
@@ -30,7 +20,7 @@ class App
   getter surface : Vulkan::SurfaceKhr = nil.as(Vulkan::SurfaceKhr)
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
 
-  getter swapchain_support : SwapChainSupport = SwapChainSupport.new
+  getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
   getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
   getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
   getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
@@ -110,7 +100,8 @@ class App
     @graphics_queue = queue_hash[idx].first
     @present_queue = graphics_queue
 
-    query_swapchain_support_details
+    # query_swapchain_support_details
+    @swapchain_support = Mantle.get_swapchain_support_details(physical_device, surface)
 
     format = select_swap_surface_format(swapchain_support.formats)
 
@@ -446,30 +437,6 @@ class App
     )
 
     Vulkan.destroy_instance(instance, nil)
-  end
-
-  def query_swapchain_support_details
-    Vulkan.get_physical_device_surface_capabilities_khr(physical_device, surface, swapchain_support.capabilities_ptr)
-
-    count = 0_u32
-    Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), nil)
-
-    if count != 0
-      swapchain_support.formats = Array(Vulkan::SurfaceFormatKhr).new(count) { Vulkan::SurfaceFormatKhr.new }
-      Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), swapchain_support.formats.to_unsafe)
-    else
-      raise "Swapchain: no formats found"
-    end
-
-    count = 0_u32
-    Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), nil)
-
-    if count != 0
-      swapchain_support.present_modes = Array(Vulkan::PresentModeKhr).new(count) { Vulkan::PresentModeKhr::VkPresentModeImmediateKhr }
-      Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), swapchain_support.present_modes.to_unsafe)
-    else
-      raise "Swapchain: no modes found"
-    end
   end
 
   def swapchain_supported?

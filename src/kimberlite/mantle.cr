@@ -220,10 +220,57 @@ module Kimberlite
       {logical_device, queues}
     end
 
+    class SwapChainSupport
+      property capabilities : Vulkan::SurfaceCapabilitiesKhr = Vulkan::SurfaceCapabilitiesKhr.new
+      property formats : Array(Vulkan::SurfaceFormatKhr) = [] of Vulkan::SurfaceFormatKhr
+      property present_modes : Array(Vulkan::PresentModeKhr) = [] of Vulkan::PresentModeKhr
+
+      def capabilities_ptr
+        pointerof(@capabilities)
+      end
+    end
+
+    def self.get_swapchain_support_details(physical_device : Vulkan::PhysicalDevice, surface : Vulkan::SurfaceKhr) : SwapChainSupport
+      support = SwapChainSupport.new
+
+      Vulkan.get_physical_device_surface_capabilities_khr(physical_device, surface, support.capabilities_ptr)
+
+      support.formats = get_physical_device_surface_formats(physical_device, surface)
+      support.present_modes = get_physical_device_surface_present_modes(physical_device, surface)
+
+      support
+    end
+
+    def self.get_physical_device_surface_formats(physical_device : Vulkan::PhysicalDevice, surface : Vulkan::SurfaceKhr) : Array(Vulkan::SurfaceFormatKhr)
+      count = 0_u32
+      Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), nil)
+
+      if count != 0
+        formats = Array(Vulkan::SurfaceFormatKhr).new(count) { Vulkan::SurfaceFormatKhr.new }
+        Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), formats.to_unsafe)
+        formats
+      else
+        [] of Vulkan::SurfaceFormatKhr
+      end
+    end
+
+    def self.get_physical_device_surface_present_modes(physical_device : Vulkan::PhysicalDevice, surface : Vulkan::SurfaceKhr) : Array(Vulkan::PresentModeKhr)
+      count = 0_u32
+      Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), nil)
+
+      if count > 0
+        modes = Array(Vulkan::PresentModeKhr).new(count) { Vulkan::PresentModeKhr::VkPresentModeImmediateKhr }
+        Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), modes.to_unsafe)
+        modes
+      else
+        [] of Vulkan::PresentModeKhr
+      end
+    end
+
     def self.assert_success(result : Vulkan::Result)
       if result != Vulkan::Result::VkSuccess
         raise ResultException.new(result)
       end
     end
-  end
+  end # Mantle
 end
