@@ -1,41 +1,44 @@
 require "lib_glfw"
 require "../../src/kimberlite/mantle"
-require "./pipeline"
+require "../../src/kimberlite/mantle/pipeline"
 
 class App
+  include Kimberlite
+
   def self.call
     a = new
     a.run
     a.destroy
   end
 
-  getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
-  getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
-  getter device : Vulkan::Device = nil.as(Vulkan::Device)
-  getter debug_callback_handle : Vulkan::DebugUtilsMessengerExt = nil.as(Vulkan::DebugUtilsMessengerExt)
+  getter! instance : Vulkan::Instance
+  getter! physical_device : Vulkan::PhysicalDevice
+  getter! device : Vulkan::Device
+  getter! debug_callback_handle : Vulkan::DebugUtilsMessengerExt
 
-  getter graphics_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
-  getter present_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
+  getter! graphics_queue : Vulkan::Queue
+  getter! present_queue : Vulkan::Queue
 
-  getter surface : Vulkan::SurfaceKhr = nil.as(Vulkan::SurfaceKhr)
-  getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
+  getter! surface : Vulkan::SurfaceKhr
+  getter! window : Pointer(LibGLFW::Window)
 
   getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
   getter! swapchain : Mantle::Swapchain
 
   getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
 
-  getter! pipeline : Pipeline
+  getter! vertex_shader : Vulkan::ShaderModule
+  getter! fragment_shader : Vulkan::ShaderModule
+
+  getter! pipeline : Mantle::Pipeline
 
   getter render_pass : Vulkan::RenderPass = nil.as(Vulkan::RenderPass)
 
   getter command_pool : Vulkan::CommandPool = nil.as(Vulkan::CommandPool)
   getter command_buffers : Array(Vulkan::CommandBuffer) = [] of Vulkan::CommandBuffer
 
-  getter image_available_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
-  getter render_finished_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
-
-  include Kimberlite
+  getter! image_available_semaphore : Vulkan::Semaphore
+  getter! render_finished_semaphore : Vulkan::Semaphore
 
   def initialize
     LibGLFW.init
@@ -59,7 +62,9 @@ class App
       extensions << String.new(glfw_req[i])
     end
 
-    @instance = Mantle.create_instance("App", "Engine", extensions, ["VK_LAYER_LUNARG_standard_validation"])
+    layers = ["VK_LAYER_LUNARG_standard_validation"]
+
+    @instance = Mantle.create_instance("App", "Engine", extensions, layers)
 
     # -------------------- debug callback
 
@@ -126,11 +131,17 @@ class App
 
     create_render_pass
 
-    @pipeline = Pipeline.new(device, swapchain.extent, render_pass)
+    @vertex_shader = Mantle.create_shader_module(device, File.read("./examples/basic/vert.spv"))
+    @fragment_shader = Mantle.create_shader_module(device, File.read("./examples/basic/frag.spv"))
 
-    @framebuffers = Array(Vulkan::Framebuffer).new(swapchain.views.size) { nil.as(Vulkan::Framebuffer) }
+    shader_usages = [
+      Mantle::Pipeline::ShaderUsage.new(vertex_shader, "main", Mantle::Pipeline::ShaderStage::Vertex),
+      Mantle::Pipeline::ShaderUsage.new(fragment_shader, "main", Mantle::Pipeline::ShaderStage::Fragment),
+    ]
 
-    swapchain.views.each_with_index do |view, i|
+    @pipeline = Mantle::Pipeline.new(device, swapchain.extent, render_pass, shader_usages)
+
+    @framebuffers = swapchain.views.map do |view|
       attachments = [view]
 
       fb_info = Vulkan::FramebufferCreateInfo.new
@@ -144,11 +155,11 @@ class App
 
       fb = nil.as(Vulkan::Framebuffer)
 
-      if Vulkan.create_framebuffer(device, pointerof(fb_info), nil, pointerof(fb)) != Vulkan::Result::VkSuccess
-        raise("failed to create framebuffer")
-      end
+      res = Vulkan.create_framebuffer(device, pointerof(fb_info), nil, pointerof(fb))
 
-      framebuffers[i] = fb
+      Mantle.assert_success(res)
+
+      fb
     end
 
     # -------------------- rendering setup
@@ -351,6 +362,9 @@ class App
     framebuffers.each do |fb|
       Vulkan.destroy_framebuffer(device, fb, nil)
     end
+
+    Vulkan.destroy_shader_module(device, vertex_shader, nil)
+    Vulkan.destroy_shader_module(device, fragment_shader, nil)
 
     pipeline.destroy
 

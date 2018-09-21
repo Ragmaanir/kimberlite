@@ -1,6 +1,4 @@
 class Pipeline
-  NULL_HANDLE = 0
-
   getter device : Vulkan::Device
   getter swapchain_extent : Vulkan::Extent2D
   getter render_pass : Vulkan::RenderPass

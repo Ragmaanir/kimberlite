@@ -392,6 +392,21 @@ module Kimberlite
       swapchain_images
     end
 
+    def self.create_shader_module(device : Vulkan::Device, source : String) : Vulkan::ShaderModule
+      info = Vulkan::ShaderModuleCreateInfo.new
+      info.s_type = Vulkan::StructureType::VkStructureTypeShaderModuleCreateInfo
+      info.code_size = source.size
+      info.p_code = Pointer(UInt32).new(source.to_unsafe.address)
+
+      mod = nil.as(Vulkan::ShaderModule)
+
+      res = Vulkan.create_shader_module(device, pointerof(info), nil, pointerof(mod))
+
+      assert_success(res)
+
+      mod
+    end
+
     def self.assert_success(result : Vulkan::Result)
       if result != Vulkan::Result::VkSuccess
         raise ResultException.new(result)
