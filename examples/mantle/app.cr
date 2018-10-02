@@ -1,5 +1,6 @@
 require "lib_glfw"
 require "../../src/kimberlite/mantle"
+require "../../src/kimberlite/mantle/swapchain"
 require "../../src/kimberlite/mantle/pipeline"
 
 class App
@@ -22,7 +23,7 @@ class App
   getter! surface : Vulkan::SurfaceKhr
   getter! window : Pointer(LibGLFW::Window)
 
-  getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
+  # getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
   getter! swapchain : Mantle::Swapchain
 
   getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
@@ -42,16 +43,6 @@ class App
 
   def initialize
     LibGLFW.init
-
-    puts "Extensions:"
-    Mantle.enumerate_extensions.each do |ext|
-      puts ext.extension_name.map(&.unsafe_chr).join
-    end
-
-    puts "Layers:"
-    Mantle.enumerate_instance_layers.each do |layer|
-      puts layer.layer_name.map(&.unsafe_chr).join
-    end
 
     glfw_req_count : UInt32 = 0
     glfw_req = LibGLFW.get_required_instance_extensions(pointerof(glfw_req_count))
@@ -85,52 +76,34 @@ class App
 
     LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
 
-    # -------------------- enumerate devices, properties
-    devices = Mantle.enumerate_physical_devices(instance)
+    select_physical_device
+    create_logical_device
+    create_swapchain
+    create_render_pass
+    create_pipeline
+    create_framebuffers
+    create_command_pool
+    create_command_buffers
 
-    puts "Physical Devices: #{devices.size}"
+    @image_available_semaphore = create_semaphore
+    @render_finished_semaphore = create_semaphore
+  end
 
-    @physical_device = devices.first
-
-    print_physical_device_properties(physical_device)
-
-    # -------------------- create logical device
-
+  def create_logical_device
     idx = Mantle.get_single_graphics_queue_index(physical_device, surface)
     @device, queue_hash = Mantle.create_logical_device(physical_device, {idx => [1.0_f32]}, ["VK_KHR_swapchain"], ["VK_LAYER_LUNARG_standard_validation"])
 
     @graphics_queue = queue_hash[idx].first
     @present_queue = graphics_queue
+  end
 
-    @swapchain_support = Mantle.get_swapchain_support_details(physical_device, surface)
+  def select_physical_device
+    devices = Mantle.enumerate_physical_devices(instance)
 
-    format = Mantle.select_standard_swap_surface_format(swapchain_support.formats)
+    @physical_device = devices.first
+  end
 
-    puts "Swap Surface Fromat: #{format}"
-    puts "Present modes: #{swapchain_support.present_modes}"
-
-    caps = swapchain_support.capabilities
-
-    extent = if caps.current_extent.width != UInt32::MAX
-               caps.current_extent
-             else
-               ext = Vulkan::Extent2D.new
-               ext.width = 800
-               ext.height = 600
-
-               ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
-               ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
-
-               ext
-             end
-
-    puts "Extent: #{extent}"
-
-    mode = swapchain_support.present_modes.first
-    @swapchain = Mantle::Swapchain.standard_swapchain(device, physical_device, surface, format, extent, mode)
-
-    create_render_pass
-
+  def create_pipeline
     @vertex_shader = Mantle.create_shader_module(device, File.read("./examples/basic/vert.spv"))
     @fragment_shader = Mantle.create_shader_module(device, File.read("./examples/basic/frag.spv"))
 
@@ -140,7 +113,9 @@ class App
     ]
 
     @pipeline = Mantle::Pipeline.new(device, swapchain.extent, render_pass, shader_usages)
+  end
 
+  def create_framebuffers
     @framebuffers = swapchain.views.map do |view|
       attachments = [view]
 
@@ -148,7 +123,7 @@ class App
       fb_info.s_type = Vulkan::StructureType::VkStructureTypeFramebufferCreateInfo
       fb_info.render_pass = render_pass
       fb_info.attachment_count = 1
-      fb_info.p_attachments = attachments
+      fb_info.p_attachments = attachments.to_unsafe
       fb_info.width = swapchain.extent.width
       fb_info.height = swapchain.extent.height
       fb_info.layers = 1
@@ -161,9 +136,9 @@ class App
 
       fb
     end
+  end
 
-    # -------------------- rendering setup
-
+  def create_command_pool
     pool_info = Vulkan::CommandPoolCreateInfo.new
     pool_info.s_type = Vulkan::StructureType::VkStructureTypeCommandPoolCreateInfo
     pool_info.queue_family_index = 0 # FIXME graphics_family_idx
@@ -172,7 +147,9 @@ class App
     if Vulkan.create_command_pool(device, pointerof(pool_info), nil, pointerof(@command_pool)) != Vulkan::Result::VkSuccess
       raise("failed to create command pool")
     end
+  end
 
+  def create_command_buffers
     @command_buffers = Array(Vulkan::CommandBuffer).new(framebuffers.size) { nil.as(Vulkan::CommandBuffer) }
 
     alloc_info = Vulkan::CommandBufferAllocateInfo.new
@@ -226,9 +203,31 @@ class App
         raise("failed to record command buffer")
       end
     end
+  end
 
-    @image_available_semaphore = create_semaphore
-    @render_finished_semaphore = create_semaphore
+  def create_swapchain
+    swapchain_support = Mantle.get_swapchain_support_details(physical_device, surface)
+
+    format = Mantle.select_standard_swap_surface_format(swapchain_support.formats)
+
+    caps = swapchain_support.capabilities
+
+    extent = if caps.current_extent.width != UInt32::MAX
+               caps.current_extent
+             else
+               ext = Vulkan::Extent2D.new
+               ext.width = 800
+               ext.height = 600
+
+               ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
+               ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
+
+               ext
+             end
+
+    mode = swapchain_support.present_modes.first
+
+    @swapchain = Mantle::Swapchain.standard_swapchain(device, physical_device, surface, format, extent, mode)
   end
 
   def run
@@ -338,17 +337,6 @@ class App
     end
 
     sem
-  end
-
-  def print_physical_device_properties(device : Vulkan::PhysicalDevice)
-    props = Vulkan::PhysicalDeviceProperties.new
-    features = Vulkan::PhysicalDeviceFeatures.new
-
-    Vulkan.get_physical_device_properties(device, pointerof(props))
-    Vulkan.get_physical_device_features(device, pointerof(features))
-
-    puts "Discrete GPU: #{props.device_type == Vulkan::PhysicalDeviceType::VkPhysicalDeviceTypeDiscreteGpu}"
-    puts "Geometry Shaders: #{features.geometry_shader}"
   end
 
   def destroy
