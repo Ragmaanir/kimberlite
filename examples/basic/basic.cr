@@ -1,27 +1,20 @@
 require "lib_glfw"
 require "../../src/kimberlite/libvulkan"
-require "./pipeline"
+require "../../src/kimberlite/mantle"
 
 class App
+  include Kimberlite
+
   def self.call
     a = new
     a.run
     a.destroy
   end
 
-  class SwapChainSupport
-    property capabilities : Vulkan::SurfaceCapabilitiesKhr = Vulkan::SurfaceCapabilitiesKhr.new
-    property formats : Array(Vulkan::SurfaceFormatKhr) = [] of Vulkan::SurfaceFormatKhr
-    property present_modes : Array(Vulkan::PresentModeKhr) = [] of Vulkan::PresentModeKhr
-
-    def capabilities_ptr
-      pointerof(@capabilities)
-    end
-  end
-
   getter instance : Vulkan::Instance = nil.as(Vulkan::Instance)
   getter physical_device : Vulkan::PhysicalDevice = nil.as(Vulkan::PhysicalDevice)
   getter device : Vulkan::Device = nil.as(Vulkan::Device)
+  getter! debug_callback_handle : Vulkan::DebugUtilsMessengerExt
 
   getter graphics_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
   getter present_queue : Vulkan::Queue = nil.as(Vulkan::Queue)
@@ -29,7 +22,7 @@ class App
   getter surface : Vulkan::SurfaceKhr = nil.as(Vulkan::SurfaceKhr)
   getter window : Pointer(LibGLFW::Window) = nil.as(LibGLFW::Window*)
 
-  getter swapchain_support : SwapChainSupport = SwapChainSupport.new
+  getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
   getter swapchain : Vulkan::SwapchainKhr = nil.as(Vulkan::SwapchainKhr)
   getter swapchain_images : Array(Vulkan::Image) = [] of Vulkan::Image
   getter swapchain_image_views : Array(Vulkan::ImageView) = [] of Vulkan::ImageView
@@ -37,7 +30,11 @@ class App
   getter! swapchain_extent : Vulkan::Extent2D
   getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
 
-  getter! pipeline : Pipeline
+  getter layout : Vulkan::PipelineLayout = nil.as(Vulkan::PipelineLayout)
+  getter pipeline : Vulkan::Pipeline = nil.as(Vulkan::Pipeline)
+
+  getter vertex_shader : Vulkan::ShaderModule = nil.as(Vulkan::ShaderModule)
+  getter fragment_shader : Vulkan::ShaderModule = nil.as(Vulkan::ShaderModule)
 
   getter render_pass : Vulkan::RenderPass = nil.as(Vulkan::RenderPass)
 
@@ -47,62 +44,41 @@ class App
   getter image_available_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
   getter render_finished_semaphore : Vulkan::Semaphore = nil.as(Vulkan::Semaphore)
 
-  def version(major : Int32, minor : Int32, patch : Int32)
-    (major << 22) | (minor << 12) | patch
-  end
-
   def initialize
     LibGLFW.init
 
-    puts "Extensions:"
-    enumerate_extensions.each do |ext|
-      puts ext.extension_name.map(&.unsafe_chr).join
-    end
+    # puts "Extensions:"
+    # Mantle.enumerate_extensions.each do |ext|
+    #   puts ext.extension_name.map(&.unsafe_chr).join
+    # end
 
-    puts "Layers:"
-    enumerate_instance_layers.each do |layer|
-      puts layer.layer_name.map(&.unsafe_chr).join
-    end
+    # puts "Layers:"
+    # Mantle.enumerate_instance_layers.each do |layer|
+    #   puts layer.layer_name.map(&.unsafe_chr).join
+    # end
 
     # -------------------- create instance
-    app_info = Vulkan::ApplicationInfo.new
-    app_info.s_type = Vulkan::StructureType::VkStructureTypeApplicationInfo
-    app_info.p_application_name = "Hello Triangle".to_unsafe
-    app_info.application_version = version(1, 0, 0)
-    app_info.p_engine_name = "No Engine".to_unsafe
-    app_info.engine_version = version(1, 0, 0)
-    app_info.api_version = version(1, 0, 0)
-
-    create_info = Vulkan::InstanceCreateInfo.new
-    create_info.s_type = Vulkan::StructureType::VkStructureTypeInstanceCreateInfo
-    create_info.p_application_info = pointerof(app_info)
-
-    exts = ["VK_EXT_debug_utils".to_unsafe]
-
     glfw_req_count : UInt32 = 0
     glfw_req = LibGLFW.get_required_instance_extensions(pointerof(glfw_req_count))
 
-    puts "Required extensions by GLFW:"
+    extensions = ["VK_EXT_debug_utils"]
+
     glfw_req_count.times do |i|
-      puts "- #{String.new(glfw_req[i])}"
-
-      exts << glfw_req[i]
+      extensions << String.new(glfw_req[i])
     end
 
-    create_info.enabled_extension_count = exts.size
-    create_info.pp_enabled_extension_names = exts.to_unsafe
+    layers = ["VK_LAYER_LUNARG_standard_validation"]
 
-    create_info.enabled_layer_count = 1
-    create_info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
-
-    result = Vulkan.create_instance(pointerof(create_info), nil, pointerof(@instance))
-
-    if result != Vulkan::Result::VkSuccess
-      raise "Create instance failed"
-    end
+    @instance = Mantle.create_instance(app_name: "App", engine_name: "Engine", extensions: extensions, layers: layers)
 
     # -------------------- debug callback
-    register_debug_callback
+    debug_callback = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, _type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, _user_data : Void*) {
+      puts "#{severity}: #{String.new(data.value.p_message)}"
+
+      0_u32
+    }
+
+    @debug_callback_handle = Mantle.register_debug_callback(instance, self, debug_callback)
 
     # -------------------- glfw window
     LibGLFW.window_hint(LibGLFW::CLIENT_API, LibGLFW::NO_API)
@@ -114,82 +90,143 @@ class App
     LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
 
     # -------------------- enumerate devices, properties
-    devices = enumerate_physical_devices
-
-    puts "Physical Devices: #{devices.size}"
-
-    @physical_device = devices.first
-
-    print_physical_device_properties(physical_device)
+    @physical_device = Mantle.enumerate_physical_devices(instance).first
 
     # -------------------- create logical device
     create_logical_device
 
-    query_swapchain_support_details
+    create_swapchain
 
-    format = select_swap_surface_format(swapchain_support.formats)
+    @swapchain_images = Mantle.get_swapchain_images(device, swapchain)
 
-    @swapchain_image_format = format.format
-
-    puts "Swap Surface Fromat: #{format}"
-    puts "Present modes: #{swapchain_support.present_modes}"
-
-    caps = swapchain_support.capabilities
-
-    @swapchain_extent = if caps.current_extent.width != UInt32::MAX
-                          caps.current_extent
-                        else
-                          ext = Vulkan::Extent2D.new
-                          ext.width = 800
-                          ext.height = 600
-
-                          ext.width = [caps.min_image_extent.width, [caps.max_image_extent.width, ext.width].min].max
-                          ext.height = [caps.min_image_extent.height, [caps.max_image_extent.height, ext.height].min].max
-
-                          ext
-                        end
-
-    puts "Extent: #{swapchain_extent}"
-
-    create_swapchain(format, swapchain_extent, swapchain_support.present_modes.first)
-
-    image_count = 0_u32
-    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), nil)
-    @swapchain_images = Array(Vulkan::Image).new(image_count) { nil.as(Vulkan::Image) }
-    Vulkan.get_swapchain_images_khr(device, swapchain, pointerof(image_count), swapchain_images.to_unsafe)
-
-    @swapchain_image_views = Array(Vulkan::ImageView).new(image_count) { nil.as(Vulkan::ImageView) }
+    @swapchain_image_views = Array(Vulkan::ImageView).new(swapchain_images.size) { nil.as(Vulkan::ImageView) }
 
     swapchain_images.each_with_index do |image, i|
-      info = Vulkan::ImageViewCreateInfo.new
-      info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
-      info.image = image
-      info.view_type = Vulkan::ImageViewType::VkImageViewType2D
-      info.format = format.format
-      info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-      info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
-      info.subresource_range.base_mip_level = 0
-      info.subresource_range.level_count = 1
-      info.subresource_range.base_array_layer = 0
-      info.subresource_range.layer_count = 1
+      info = Mantle.build_image_view_create_info(image, swapchain_image_format)
 
-      view = nil.as(Vulkan::ImageView)
-
-      if Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view)) != Vulkan::Result::VkSuccess
-        raise("failed to create image views")
-      end
-
-      swapchain_image_views[i] = view
+      swapchain_image_views[i] = Mantle.create_image_view(device, info)
     end
 
     create_render_pass
 
-    @pipeline = Pipeline.new(device, swapchain_extent, render_pass)
+    # -----
+    @vertex_shader = Mantle.create_shader_module(device, File.read("./examples/basic/vert.spv"))
+    @fragment_shader = Mantle.create_shader_module(device, File.read("./examples/basic/frag.spv"))
 
-    @framebuffers = Array(Vulkan::Framebuffer).new(swapchain_image_views.size) { nil.as(Vulkan::Framebuffer) }
+    stages = [
+      Mantle.create_pipeline_shader_stage_create_info(vertex_shader, Mantle::ShaderKind::Vertex),
+      Mantle.create_pipeline_shader_stage_create_info(fragment_shader, Mantle::ShaderKind::Fragment),
+    ]
+
+    vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
+    vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
+    vertex_info.vertex_binding_description_count = 0
+    vertex_info.p_vertex_binding_descriptions = nil
+    vertex_info.vertex_attribute_description_count = 0
+    vertex_info.p_vertex_attribute_descriptions = nil
+
+    input = Vulkan::PipelineInputAssemblyStateCreateInfo.new
+    input.s_type = Vulkan::StructureType::VkStructureTypePipelineInputAssemblyStateCreateInfo
+    input.topology = Vulkan::PrimitiveTopology::VkPrimitiveTopologyTriangleList
+    input.primitive_restart_enable = 0 # false
+
+    viewport = Vulkan::Viewport.new
+    viewport.x = 0.0_f32
+    viewport.y = 0.0_f32
+    viewport.width = swapchain_extent.width
+    viewport.height = swapchain_extent.height
+    viewport.min_depth = 0.0_f32
+    viewport.max_depth = 1.0_f32
+
+    offset = Vulkan::Offset2D.new
+
+    scissor = Vulkan::Rect2D.new
+    scissor.offset = offset
+    scissor.extent = swapchain_extent
+
+    viewport_info = Vulkan::PipelineViewportStateCreateInfo.new
+    viewport_info.s_type = Vulkan::StructureType::VkStructureTypePipelineViewportStateCreateInfo
+    viewport_info.viewport_count = 1
+    viewport_info.p_viewports = pointerof(viewport)
+    viewport_info.scissor_count = 1
+    viewport_info.p_scissors = pointerof(scissor)
+
+    rasterizer = Vulkan::PipelineRasterizationStateCreateInfo.new
+    rasterizer.s_type = Vulkan::StructureType::VkStructureTypePipelineRasterizationStateCreateInfo
+    rasterizer.depth_clamp_enable = 0        # false
+    rasterizer.rasterizer_discard_enable = 0 # false
+    rasterizer.polygon_mode = Vulkan::PolygonMode::VkPolygonModeFill
+    rasterizer.line_width = 1.0_f32
+    rasterizer.cull_mode = Vulkan::CullModeFlagBits::VkCullModeBackBit
+    rasterizer.front_face = Vulkan::FrontFace::VkFrontFaceClockwise
+    rasterizer.depth_bias_enable = 0 # false
+    rasterizer.depth_bias_constant_factor = 0.0_f32
+    rasterizer.depth_bias_clamp = 0.0_f32
+    rasterizer.depth_bias_slope_factor = 0.0_f32
+
+    multisampling = Vulkan::PipelineMultisampleStateCreateInfo.new
+    multisampling.s_type = Vulkan::StructureType::VkStructureTypePipelineMultisampleStateCreateInfo
+    multisampling.sample_shading_enable = 0 # false
+    multisampling.rasterization_samples = Vulkan::SampleCountFlagBits::VkSampleCount1Bit
+    multisampling.min_sample_shading = 1.0_f32
+    multisampling.p_sample_mask = nil
+    multisampling.alpha_to_coverage_enable = 0 # false
+    multisampling.alpha_to_one_enable = 0      # false
+
+    blending = Vulkan::PipelineColorBlendAttachmentState.new
+    blending.color_write_mask = Vulkan::ColorComponentFlagBits::VkColorComponentRBit | Vulkan::ColorComponentFlagBits::VkColorComponentGBit | Vulkan::ColorComponentFlagBits::VkColorComponentBBit | Vulkan::ColorComponentFlagBits::VkColorComponentABit
+    blending.blend_enable = 0 # false
+    blending.src_color_blend_factor = Vulkan::BlendFactor::VkBlendFactorOne
+    blending.dst_color_blend_factor = Vulkan::BlendFactor::VkBlendFactorZero
+    blending.color_blend_op = Vulkan::BlendOp::VkBlendOpAdd
+    blending.src_alpha_blend_factor = Vulkan::BlendFactor::VkBlendFactorOne
+    blending.dst_alpha_blend_factor = Vulkan::BlendFactor::VkBlendFactorZero
+    blending.alpha_blend_op = Vulkan::BlendOp::VkBlendOpAdd
+
+    color_blending = Vulkan::PipelineColorBlendStateCreateInfo.new
+    color_blending.s_type = Vulkan::StructureType::VkStructureTypePipelineColorBlendStateCreateInfo
+    color_blending.logic_op_enable = 0 # false
+    color_blending.logic_op = Vulkan::LogicOp::VkLogicOpCopy
+    color_blending.attachment_count = 1
+    color_blending.p_attachments = pointerof(blending)
+    color_blending.blend_constants[0] = 0.0_f32
+    color_blending.blend_constants[1] = 0.0_f32
+    color_blending.blend_constants[2] = 0.0_f32
+    color_blending.blend_constants[3] = 0.0_f32
+
+    layout_info = Vulkan::PipelineLayoutCreateInfo.new
+    layout_info.s_type = Vulkan::StructureType::VkStructureTypePipelineLayoutCreateInfo
+    layout_info.set_layout_count = 0
+    layout_info.p_set_layouts = nil
+    layout_info.push_constant_range_count = 0
+    layout_info.p_push_constant_ranges = nil
+
+    @layout = Mantle.create_pipeline_layout(device, layout_info)
+
+    info = Vulkan::GraphicsPipelineCreateInfo.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeGraphicsPipelineCreateInfo
+    info.stage_count = 2
+    info.p_stages = stages.to_unsafe
+    info.p_vertex_input_state = pointerof(vertex_info)
+    info.p_input_assembly_state = pointerof(input)
+    info.p_viewport_state = pointerof(viewport_info)
+    info.p_rasterization_state = pointerof(rasterizer)
+    info.p_multisample_state = pointerof(multisampling)
+    info.p_depth_stencil_state = nil
+    info.p_color_blend_state = pointerof(color_blending)
+    info.p_dynamic_state = nil
+    info.layout = layout
+
+    info.render_pass = render_pass
+    info.subpass = 0
+    info.base_pipeline_handle = nil.as(Vulkan::Pipeline)
+    info.base_pipeline_index = -1
+
+    @pipeline = Mantle.create_graphics_pipelines(device, [info])
+
+    # -----
+
+    @framebuffers = Array(Vulkan::Framebuffer).new
 
     swapchain_image_views.each_with_index do |view, i|
       attachments = [view]
@@ -203,13 +240,7 @@ class App
       fb_info.height = swapchain_extent.height
       fb_info.layers = 1
 
-      fb = nil.as(Vulkan::Framebuffer)
-
-      if Vulkan.create_framebuffer(device, pointerof(fb_info), nil, pointerof(fb)) != Vulkan::Result::VkSuccess
-        raise("failed to create framebuffer")
-      end
-
-      framebuffers[i] = fb
+      framebuffers << Mantle.create_framebuffer(device, fb_info)
     end
 
     # -------------------- rendering setup
@@ -219,22 +250,16 @@ class App
     pool_info.queue_family_index = 0 # FIXME graphics_family_idx
     pool_info.flags = 0
 
-    if Vulkan.create_command_pool(device, pointerof(pool_info), nil, pointerof(@command_pool)) != Vulkan::Result::VkSuccess
-      raise("failed to create command pool")
-    end
-
-    @command_buffers = Array(Vulkan::CommandBuffer).new(framebuffers.size) { nil.as(Vulkan::CommandBuffer) }
+    @command_pool = Mantle.create_command_pool(device, pool_info)
 
     alloc_info = Vulkan::CommandBufferAllocateInfo.new
 
     alloc_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferAllocateInfo
     alloc_info.command_pool = command_pool
     alloc_info.level = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
-    alloc_info.command_buffer_count = command_buffers.size
+    alloc_info.command_buffer_count = framebuffers.size
 
-    if Vulkan.allocate_command_buffers(device, pointerof(alloc_info), command_buffers.to_unsafe) != Vulkan::Result::VkSuccess
-      raise("failed to allocate command buffers")
-    end
+    @command_buffers = Mantle.allocate_command_buffers(device, alloc_info)
 
     command_buffers.each_with_index do |buf, i|
       begin_info = Vulkan::CommandBufferBeginInfo.new
@@ -242,9 +267,7 @@ class App
       begin_info.flags = Vulkan::CommandBufferUsageFlagBits::VkCommandBufferUsageSimultaneousUseBit
       begin_info.p_inheritance_info = nil
 
-      if Vulkan.begin_command_buffer(buf, pointerof(begin_info)) != Vulkan::Result::VkSuccess
-        raise("failed to begin recording command buffer")
-      end
+      Mantle.begin_command_buffer(buf, begin_info)
 
       offset = Vulkan::Offset2D.new
 
@@ -266,19 +289,17 @@ class App
 
       Vulkan.cmd_begin_render_pass(buf, pointerof(pass_begin), Vulkan::SubpassContents::VkSubpassContentsInline)
 
-      Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline.pipeline)
+      Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline)
 
       Vulkan.cmd_draw(buf, 3, 1, 0, 0)
 
       Vulkan.cmd_end_render_pass(buf)
 
-      if Vulkan.end_command_buffer(buf) != Vulkan::Result::VkSuccess
-        raise("failed to record command buffer")
-      end
+      Mantle.end_command_buffer(buf)
     end
 
-    @image_available_semaphore = create_semaphore
-    @render_finished_semaphore = create_semaphore
+    @image_available_semaphore = Mantle.create_semaphore(device)
+    @render_finished_semaphore = Mantle.create_semaphore(device)
   end
 
   def run
@@ -313,9 +334,7 @@ class App
     submit_info.signal_semaphore_count = 1
     submit_info.p_signal_semaphores = signal_semaphores
 
-    if Vulkan.queue_submit(graphics_queue, 1, pointerof(submit_info), nil) != Vulkan::Result::VkSuccess
-      raise("failed to submit draw command buffer")
-    end
+    Mantle.queue_submit(graphics_queue, [submit_info])
 
     present_info = Vulkan::PresentInfoKhr.new
     present_info.s_type = Vulkan::StructureType::VkStructureTypePresentInfoKhr
@@ -333,6 +352,36 @@ class App
     Vulkan.queue_present_khr(present_queue, pointerof(present_info))
 
     Vulkan.queue_wait_idle(present_queue)
+  end
+
+  def create_logical_device
+    idx = Mantle.get_single_graphics_queue_index(physical_device, surface)
+    @device, queue_hash = Mantle.create_logical_device(physical_device, {idx => [1.0_f32]}, ["VK_KHR_swapchain"], ["VK_LAYER_LUNARG_standard_validation"])
+
+    @graphics_queue = queue_hash[idx].first
+    @present_queue = graphics_queue
+  end
+
+  def create_swapchain
+    @swapchain_support = Mantle.get_swapchain_support_details(physical_device, surface)
+
+    format = Mantle.select_standard_swap_surface_format(swapchain_support.formats)
+
+    @swapchain_image_format = format.format
+
+    caps = swapchain_support.capabilities
+
+    @swapchain_extent = Mantle.create_swapchain_extent(800, 600, caps)
+
+    params = Mantle.standard_swapchain_parameters(
+      surface,
+      format,
+      swapchain_extent,
+      swapchain_support.present_modes.first,
+      swapchain_support.capabilities.current_transform
+    )
+
+    @swapchain = Mantle.create_swapchain(device, params)
   end
 
   def create_render_pass
@@ -372,61 +421,7 @@ class App
     pass_info.dependency_count = 1
     pass_info.p_dependencies = pointerof(dependency)
 
-    if Vulkan.create_render_pass(device, pointerof(pass_info), nil, pointerof(@render_pass)) != Vulkan::Result::VkSuccess
-      raise("failed to create render pass")
-    end
-  end
-
-  def create_swapchain(format, extent, mode)
-    info = Vulkan::SwapchainCreateInfoKhr.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeSwapchainCreateInfoKhr
-    info.surface = surface
-    info.min_image_count = 2
-    info.image_format = format.format
-    info.image_color_space = format.color_space
-    info.image_extent = extent
-    info.image_array_layers = 1
-    info.image_usage = Vulkan::ImageUsageFlagBits::VkImageUsageColorAttachmentBit
-
-    raise "TODO: graphics queue != present queue" if graphics_queue != present_queue
-
-    info.image_sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
-    info.queue_family_index_count = 0
-    info.p_queue_family_indices = nil
-
-    info.pre_transform = swapchain_support.capabilities.current_transform
-    info.composite_alpha = Vulkan::CompositeAlphaFlagBitsKhr::VkCompositeAlphaOpaqueBitKhr
-    info.present_mode = mode
-    info.clipped = 1
-    info.old_swapchain = nil
-
-    if Vulkan.create_swapchain_khr(device, pointerof(info), nil, pointerof(@swapchain)) != Vulkan::Result::VkSuccess
-      raise("failed to create swap chain!")
-    end
-  end
-
-  def create_semaphore
-    sem = nil.as(Vulkan::Semaphore)
-
-    info = Vulkan::SemaphoreCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeSemaphoreCreateInfo
-
-    if Vulkan.create_semaphore(device, pointerof(info), nil, pointerof(sem)) != Vulkan::Result::VkSuccess
-      raise("Semaphore creation failed")
-    end
-
-    sem
-  end
-
-  def print_physical_device_properties(device : Vulkan::PhysicalDevice)
-    props = Vulkan::PhysicalDeviceProperties.new
-    features = Vulkan::PhysicalDeviceFeatures.new
-
-    Vulkan.get_physical_device_properties(device, pointerof(props))
-    Vulkan.get_physical_device_features(device, pointerof(features))
-
-    puts "Discrete GPU: #{props.device_type == Vulkan::PhysicalDeviceType::VkPhysicalDeviceTypeDiscreteGpu}"
-    puts "Geometry Shaders: #{features.geometry_shader}"
+    @render_pass = Mantle.create_render_pass(device, pass_info)
   end
 
   def destroy
@@ -441,7 +436,11 @@ class App
       Vulkan.destroy_framebuffer(device, fb, nil)
     end
 
-    pipeline.destroy
+    Vulkan.destroy_pipeline(device, pipeline, nil)
+    Vulkan.destroy_pipeline_layout(device, layout, nil)
+
+    Vulkan.destroy_shader_module(device, vertex_shader, nil)
+    Vulkan.destroy_shader_module(device, fragment_shader, nil)
 
     Vulkan.destroy_render_pass(device, render_pass, nil)
 
@@ -452,201 +451,16 @@ class App
     Vulkan.destroy_swapchain_khr(device, swapchain, nil)
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)
-    destroy_debug_utils_messenger_ext(instance, @debug_callback.pointer.as(Vulkan::DebugUtilsMessengerExt), nil.as(Vulkan::AllocationCallbacks*))
+
+    Mantle.destroy_debug_utils_messenger_ext(
+      instance,
+      instance,
+      debug_callback_handle,
+      nil.as(Vulkan::AllocationCallbacks*)
+    )
+
     Vulkan.destroy_instance(instance, nil)
   end
-
-  def create_logical_device
-    # ---------- queue families
-    families = enumerate_queue_families(physical_device)
-
-    puts "Queue Families: #{families.size}"
-
-    # ---------- graphics family
-    graphics_family_idx = families.index do |family|
-      family.queue_count > 0 && (family.queue_flags & Vulkan::QueueFlagBits::VkQueueGraphicsBit.to_i)
-    end || raise("Graphics Queue not found")
-
-    puts "Graphics Queue Index: #{graphics_family_idx}"
-
-    # ---------- present family
-    present_family_idx = nil
-
-    families.each_with_index do |family, i|
-      present = 0_u32
-      Vulkan.get_physical_device_surface_support_khr(physical_device, i, surface, pointerof(present))
-
-      if family.queue_count > 0 && present
-        present_family_idx = i
-        break
-      end
-    end
-
-    present_family_idx = present_family_idx || raise("Present Queue not found")
-
-    # ---------- queue create infos
-    queue_infos = [graphics_family_idx, present_family_idx].uniq.map do |queue_idx|
-      queue_info = Vulkan::DeviceQueueCreateInfo.new
-      queue_info.s_type = Vulkan::StructureType::VkStructureTypeDeviceQueueCreateInfo
-      queue_info.queue_family_index = queue_idx
-      queue_info.queue_count = 1
-
-      priority = 1.0_f32
-      queue_info.p_queue_priorities = pointerof(priority)
-
-      queue_info
-    end
-
-    # ---------- logical device info
-    features = Vulkan::PhysicalDeviceFeatures.new
-
-    exts = ["VK_KHR_swapchain".to_unsafe]
-
-    info = Vulkan::DeviceCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeDeviceCreateInfo
-
-    info.queue_create_info_count = queue_infos.size
-    info.p_queue_create_infos = queue_infos.to_unsafe
-
-    info.p_enabled_features = pointerof(features)
-
-    info.enabled_extension_count = exts.size
-    info.pp_enabled_extension_names = exts.to_unsafe
-
-    info.enabled_layer_count = 1
-    info.pp_enabled_layer_names = ["VK_LAYER_LUNARG_standard_validation".to_unsafe].to_unsafe
-
-    # ---------- create logical device
-
-    if Vulkan.create_device(physical_device, pointerof(info), nil, pointerof(@device)) != Vulkan::Result::VkSuccess
-      raise("failed to create logical device!")
-    end
-
-    Vulkan.get_device_queue(device, graphics_family_idx.to_u32, 0, pointerof(@graphics_queue))
-    Vulkan.get_device_queue(device, present_family_idx.to_u32, 0, pointerof(@present_queue))
-  end
-
-  def query_swapchain_support_details
-    Vulkan.get_physical_device_surface_capabilities_khr(physical_device, surface, swapchain_support.capabilities_ptr)
-
-    count = 0_u32
-    Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), nil)
-
-    if count != 0
-      swapchain_support.formats = Array(Vulkan::SurfaceFormatKhr).new(count) { Vulkan::SurfaceFormatKhr.new }
-      Vulkan.get_physical_device_surface_formats_khr(physical_device, surface, pointerof(count), swapchain_support.formats.to_unsafe)
-    else
-      raise "Swapchain: no formats found"
-    end
-
-    count = 0_u32
-    Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), nil)
-
-    if count != 0
-      swapchain_support.present_modes = Array(Vulkan::PresentModeKhr).new(count) { Vulkan::PresentModeKhr::VkPresentModeImmediateKhr }
-      Vulkan.get_physical_device_surface_present_modes_khr(physical_device, surface, pointerof(count), swapchain_support.present_modes.to_unsafe)
-    else
-      raise "Swapchain: no modes found"
-    end
-  end
-
-  def select_swap_surface_format(candidates : Array(Vulkan::SurfaceFormatKhr)) : Vulkan::SurfaceFormatKhr
-    if candidates.empty?
-      raise "No candidates given"
-    elsif candidates.size == 1 && candidates[0].format == Vulkan::Format::VkFormatUndefined
-      format = Vulkan::SurfaceFormatKhr.new
-      format.format = Vulkan::Format::VkFormatB8G8R8A8Unorm
-      format.color_space = Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
-      format
-    else
-      candidates.find do |c|
-        c.format == Vulkan::Format::VkFormatB8G8R8A8Unorm && c.color_space == Vulkan::ColorSpaceKhr::VkColorSpaceSrgbNonlinearKhr
-      end || candidates[0]
-    end
-  end
-
-  def enumerate_extensions
-    count = 0_u32
-
-    Vulkan.enumerate_instance_extension_properties(nil, pointerof(count), nil)
-
-    exts = Array(Vulkan::ExtensionProperties).new(count) { Vulkan::ExtensionProperties.new }
-
-    Vulkan.enumerate_instance_extension_properties(nil, pointerof(count), exts.to_unsafe)
-
-    exts
-  end
-
-  def enumerate_instance_layers
-    count = 0_u32
-
-    Vulkan.enumerate_instance_layer_properties(pointerof(count), nil)
-
-    layers = Array(Vulkan::LayerProperties).new(count) { Vulkan::LayerProperties.new }
-
-    Vulkan.enumerate_instance_layer_properties(pointerof(count), layers.to_unsafe)
-
-    layers
-  end
-
-  def enumerate_physical_devices
-    count = 0_u32
-
-    Vulkan.enumerate_physical_devices(instance, pointerof(count), nil)
-
-    devices = Array(Vulkan::PhysicalDevice).new(count) { nil.as(Vulkan::PhysicalDevice) }
-
-    Vulkan.enumerate_physical_devices(instance, pointerof(count), devices.to_unsafe)
-
-    devices
-  end
-
-  def enumerate_queue_families(device : Vulkan::PhysicalDevice)
-    count = 0_u32
-
-    Vulkan.get_physical_device_queue_family_properties(device, pointerof(count), nil)
-
-    families = Array(Vulkan::QueueFamilyProperties).new(count) { Vulkan::QueueFamilyProperties.new }
-
-    Vulkan.get_physical_device_queue_family_properties(device, pointerof(count), families.to_unsafe)
-
-    families
-  end
-
-  getter debug_callback : (Vulkan::DebugUtilsMessageSeverityFlagBitsExt, Vulkan::DebugUtilsMessageTypeFlagsExt, Vulkan::DebugUtilsMessengerCallbackDataExt*, Void*) -> UInt32 = ->(severity : Vulkan::DebugUtilsMessageSeverityFlagBitsExt, type : Vulkan::DebugUtilsMessageTypeFlagsExt, data : Vulkan::DebugUtilsMessengerCallbackDataExt*, user_data : Void*) {
-    puts "#{severity}: #{String.new(data.value.p_message)}"
-    # app = user_data.as(App)
-
-    0_u32
-  }
-
-  def register_debug_callback
-    info = Vulkan::DebugUtilsMessengerCreateInfoExt.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeDebugUtilsMessengerCreateInfoExt
-    info.message_severity = Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityVerboseBitExt | Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityWarningBitExt | Vulkan::DebugUtilsMessageSeverityFlagBitsExt::VkDebugUtilsMessageSeverityErrorBitExt
-    info.message_type = Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeGeneralBitExt | Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypeValidationBitExt | Vulkan::DebugUtilsMessageTypeFlagBitsExt::VkDebugUtilsMessageTypePerformanceBitExt
-    info.pfn_user_callback = debug_callback
-
-    info.p_user_data = self.as(Void*)
-
-    if (create_debug_utils_messenger_ext(instance, pointerof(info), Pointer(Vulkan::AllocationCallbacks).null, pointerof(@debug_callback).as(Pointer(Vulkan::DebugUtilsMessengerExt))) != Vulkan::Result::VkSuccess)
-      raise("failed to set up debug callback!")
-    end
-  end
-
-  macro define_vulkan_function(meth, name, type)
-    def {{meth}}(*args)
-      pointer = Vulkan.get_instance_proc_addr(instance, {{name}})
-      func = {{type}}.new(pointer.pointer, pointer.closure_data)
-
-      raise "Could not link: #{ {{name}} }" unless func
-
-      func.call(*args)
-    end
-  end
-
-  define_vulkan_function(create_debug_utils_messenger_ext, "vkCreateDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerCreateInfoExt*, Vulkan::AllocationCallbacks*, Vulkan::DebugUtilsMessengerExt*, Vulkan::Result))
-  define_vulkan_function(destroy_debug_utils_messenger_ext, "vkDestroyDebugUtilsMessengerEXT", Proc(Vulkan::Instance, Vulkan::DebugUtilsMessengerExt, Vulkan::AllocationCallbacks*, Void))
 end
 
 App.call
