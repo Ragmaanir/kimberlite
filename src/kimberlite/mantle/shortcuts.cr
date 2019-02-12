@@ -205,6 +205,54 @@ module Kimberlite
         info
       end
 
+      def create_command_pool(
+        device : Vulkan::Device,
+        queue_family_index : Int32,
+        flags : Vulkan::CommandPoolCreateFlags = 0
+      )
+        info = Vulkan::CommandPoolCreateInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeCommandPoolCreateInfo
+        info.queue_family_index = queue_family_index
+        info.flags = flags
+
+        create_command_pool(device, info)
+      end
+
+      def allocate_command_buffers(
+        device : Vulkan::Device,
+        pool : Vulkan::CommandPool,
+        count : Int32,
+        level : Vulkan::CommandBufferLevel = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
+      )
+        info = Vulkan::CommandBufferAllocateInfo.new
+
+        info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferAllocateInfo
+        info.command_pool = pool
+        info.level = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
+        info.command_buffer_count = count
+
+        allocate_command_buffers(device, info)
+      end
+
+      def create_vertex_buffer(device : Vulkan::Device, size : UInt64, sharing_mode : Vulkan::SharingMode = Vulkan::SharingMode::VkSharingModeExclusive)
+        info = Vulkan::BufferCreateInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeBufferCreateInfo
+        info.size = size
+        info.usage = Vulkan::BufferUsageFlagBits::VkBufferUsageVertexBufferBit
+        info.sharing_mode = sharing_mode
+
+        create_buffer(device, info)
+      end
+
+      def begin_command_buffer(buffer : Vulkan::CommandBuffer, flags : Vulkan::CommandBufferUsageFlagBits)
+        info = Vulkan::CommandBufferBeginInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferBeginInfo
+        info.flags = flags
+        info.p_inheritance_info = nil
+
+        begin_command_buffer(buffer, info)
+      end
+
       def find_matching_memory_type_index(physical_device : Vulkan::PhysicalDevice, req : Vulkan::MemoryRequirements, properties : Int32)
         props = get_physical_device_memory_properties(physical_device)
 
@@ -241,6 +289,40 @@ module Kimberlite
         data = Mantle.map_memory(device, memory, size)
         Intrinsics.memcpy(data, buffer, size, 0_u64, false)
         Vulkan.unmap_memory(device, memory)
+      end
+
+      def cmd_begin_render_pass(
+        buffer : Vulkan::CommandBuffer,
+        pass : Vulkan::RenderPass,
+        framebuffer : Vulkan::Framebuffer,
+        extent : Vulkan::Extent2D,
+        clear_values = [Vulkan::ClearValue.new],
+        offset = Vulkan::Offset2D.new,
+        subpass_content = Vulkan::SubpassContents::VkSubpassContentsInline
+      )
+        offset = Vulkan::Offset2D.new
+
+        info = Vulkan::RenderPassBeginInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeRenderPassBeginInfo
+        info.render_pass = pass
+        info.framebuffer = framebuffer
+        info.render_area.offset = offset
+        info.render_area.extent = extent
+
+        info.clear_value_count = clear_values.size
+        info.p_clear_values = clear_values.to_unsafe
+
+        Vulkan.cmd_begin_render_pass(buffer, pointerof(info), subpass_content)
+      end
+
+      def cmd_bind_vertex_buffers(
+        command_buffer : Vulkan::CommandBuffer,
+        binding_count : UInt32,
+        buffers : Array(Vulkan::Buffer),
+        first_binding : UInt32 = 0,
+        offsets = buffers.map { 0_u64 }
+      )
+        Vulkan.cmd_bind_vertex_buffers(command_buffer, first_binding, binding_count, buffers.to_unsafe, offsets.to_unsafe)
       end
     end # Shortcuts
   end   # Mantle

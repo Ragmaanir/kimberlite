@@ -1,27 +1,22 @@
 module Kimberlite
   module Mantle
     class PipelineBuilder
-      getter shader_modules : Array(Tuple(Vulkan::ShaderStageFlagBits, Vulkan::ShaderModule))
+      property shader_modules : Array(Tuple(Vulkan::ShaderStageFlagBits, Vulkan::ShaderModule))
 
-      property vertex_info : Vulkan::PipelineVertexInputStateCreateInfo
-      getter input_assembly_info : Vulkan::PipelineInputAssemblyStateCreateInfo
-      getter viewports : Array(Vulkan::Viewport) = [] of Vulkan::Viewport
-      getter scissors : Array(Vulkan::Rect2D) = [] of Vulkan::Rect2D
-      getter attachments : Array(Vulkan::PipelineColorBlendAttachmentState) = [] of Vulkan::PipelineColorBlendAttachmentState
-      getter multisampling : Vulkan::PipelineMultisampleStateCreateInfo
-      getter color_blending : Vulkan::PipelineColorBlendStateCreateInfo
-      getter layout_info : Vulkan::PipelineLayoutCreateInfo
-      getter rasterizer : Vulkan::PipelineRasterizationStateCreateInfo
+      property input_assembly_info : Vulkan::PipelineInputAssemblyStateCreateInfo
+      property viewports : Array(Vulkan::Viewport) = [] of Vulkan::Viewport
+      property scissors : Array(Vulkan::Rect2D) = [] of Vulkan::Rect2D
+      property attachments : Array(Vulkan::PipelineColorBlendAttachmentState) = [] of Vulkan::PipelineColorBlendAttachmentState
+      property multisampling : Vulkan::PipelineMultisampleStateCreateInfo
+      property color_blending : Vulkan::PipelineColorBlendStateCreateInfo
+      property layout_info : Vulkan::PipelineLayoutCreateInfo
+      property rasterizer : Vulkan::PipelineRasterizationStateCreateInfo
+
+      property vertex_binding_descriptions : Array(Vulkan::VertexInputBindingDescription) = [] of Vulkan::VertexInputBindingDescription
+      property vertex_attribute_descriptions : Array(Vulkan::VertexInputAttributeDescription) = [] of Vulkan::VertexInputAttributeDescription
 
       def initialize
         @shader_modules = [] of Tuple(Vulkan::ShaderStageFlagBits, Vulkan::ShaderModule)
-
-        @vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
-        vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
-        vertex_info.vertex_binding_description_count = 0
-        vertex_info.p_vertex_binding_descriptions = nil
-        vertex_info.vertex_attribute_description_count = 0
-        vertex_info.p_vertex_attribute_descriptions = nil
 
         @input_assembly_info = Vulkan::PipelineInputAssemblyStateCreateInfo.new
         input_assembly_info.s_type = Vulkan::StructureType::VkStructureTypePipelineInputAssemblyStateCreateInfo
@@ -111,11 +106,18 @@ module Kimberlite
 
         stages = generate_stages
 
+        vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
+        vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
+        vertex_info.vertex_binding_description_count = vertex_binding_descriptions.size
+        vertex_info.p_vertex_binding_descriptions = vertex_binding_descriptions.to_unsafe
+        vertex_info.vertex_attribute_description_count = vertex_attribute_descriptions.size
+        vertex_info.p_vertex_attribute_descriptions = vertex_attribute_descriptions.to_unsafe
+
         info = Vulkan::GraphicsPipelineCreateInfo.new
         info.s_type = Vulkan::StructureType::VkStructureTypeGraphicsPipelineCreateInfo
         info.stage_count = stages.size
         info.p_stages = stages.to_unsafe
-        info.p_vertex_input_state = pointerof(@vertex_info)
+        info.p_vertex_input_state = pointerof(vertex_info)
         info.p_input_assembly_state = pointerof(@input_assembly_info)
         info.p_viewport_state = pointerof(viewport_info)
         info.p_rasterization_state = pointerof(@rasterizer)

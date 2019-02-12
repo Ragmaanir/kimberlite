@@ -5,6 +5,8 @@ require "../../src/kimberlite/mantle/swapchain"
 class App
   include Kimberlite
 
+  ROOT = "./examples/mantle"
+
   def self.call
     a = new
     a.run
@@ -49,8 +51,8 @@ class App
     -0.5f32, 0.5f32, 1.0f32, 0.0f32, 1.0f32,
   ]
 
-  VERTEX_COUNT = VERTICES.size / 5
-  VERTEX_SIZE  = (VERTICES.size / VERTEX_COUNT) * 4 # bytes
+  VERTEX_COUNT = (VERTICES.size / 5).to_u64
+  VERTEX_SIZE  = (VERTICES.size / VERTEX_COUNT) * 4_u64 # bytes
 
   def initialize
     LibGLFW.init
@@ -87,22 +89,22 @@ class App
 
     LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
 
-    @physical_device = select_physical_device
+    @physical_device = Mantle.enumerate_physical_devices(instance).first
     create_logical_device
     @swapchain = create_swapchain
     @render_pass = create_render_pass
     @vertex_shader, @fragment_shader = create_shaders
     @pipeline, @pipeline_layout = create_pipeline
     @framebuffers = create_framebuffers
-    @command_pool = create_command_pool
+    @command_pool = Mantle.create_command_pool(device, 0) # FIXME queue family index
 
-    @vertex_buffer = create_vertex_buffer
+    @vertex_buffer = Mantle.create_vertex_buffer(device, VERTEX_COUNT * VERTEX_SIZE)
     @vertex_buffer_memory = Mantle.allocate_buffer_memory(device, physical_device, vertex_buffer)
 
     Mantle.copy_memory(
       device,
       vertex_buffer_memory,
-      (VERTEX_COUNT * VERTEX_SIZE).to_u64,
+      VERTEX_COUNT * VERTEX_SIZE,
       VERTICES.to_unsafe.as(Void*)
     )
 
@@ -125,12 +127,6 @@ class App
     @present_queue = graphics_queue
   end
 
-  def select_physical_device
-    devices = Mantle.enumerate_physical_devices(instance)
-
-    devices.first
-  end
-
   record(Vec2, x : Float32, y : Float32)
   record(Vec3, x : Float32, y : Float32, z : Float32)
   record(Vertex, pos : Vec2, color : Vec3)
@@ -141,7 +137,7 @@ class App
     desc.stride = VERTEX_SIZE
     desc.input_rate = Vulkan::VertexInputRate::VkVertexInputRateVertex
 
-    desc
+    [desc]
   end
 
   def build_vertex_attribute_desciptions
@@ -168,38 +164,34 @@ class App
 
   def create_shaders
     {
-      Mantle.create_shader_module(device, File.read("./examples/mantle/vert.spv")),
-      Mantle.create_shader_module(device, File.read("./examples/mantle/frag.spv")),
+      Mantle.create_shader_module(device, File.read("#{ROOT}/vert.spv")),
+      Mantle.create_shader_module(device, File.read("#{ROOT}/frag.spv")),
     }
   end
 
   def create_pipeline
     b = Mantle::PipelineBuilder.new
 
-    b.scissors <<
+    b.scissors = [
       Vulkan::Rect2D.new(
         Vulkan::Offset2D.new(0, 0),
         Vulkan::Extent2D.new(swapchain.extent.width, swapchain.extent.height)
-      )
+      ),
+    ]
 
-    b.viewports << Vulkan::Viewport.new(swapchain.extent.width, swapchain.extent.height)
+    b.viewports = [
+      Vulkan::Viewport.new(swapchain.extent.width, swapchain.extent.height),
+    ]
 
-    b.shader_modules << {Vulkan::ShaderStageFlagBits::VkShaderStageVertexBit, vertex_shader}
-    b.shader_modules << {Vulkan::ShaderStageFlagBits::VkShaderStageFragmentBit, fragment_shader}
+    b.shader_modules = [
+      {Vulkan::ShaderStageFlagBits::VkShaderStageVertexBit, vertex_shader},
+      {Vulkan::ShaderStageFlagBits::VkShaderStageFragmentBit, fragment_shader},
+    ]
 
-    input_desc = build_vertex_input_description
-    atts = build_vertex_attribute_desciptions
+    b.vertex_binding_descriptions = build_vertex_input_description
+    b.vertex_attribute_descriptions = build_vertex_attribute_desciptions
 
-    vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
-    vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
-    vertex_info.vertex_binding_description_count = 1
-    vertex_info.p_vertex_binding_descriptions = pointerof(input_desc)
-    vertex_info.vertex_attribute_description_count = atts.size
-    vertex_info.p_vertex_attribute_descriptions = atts.to_unsafe
-
-    b.vertex_info = vertex_info
-
-    b.attachments << b.default_color_blend_attachment
+    b.attachments = [b.default_color_blend_attachment]
 
     b.build(device, render_pass)
   end
@@ -221,69 +213,17 @@ class App
     end
   end
 
-  def create_command_pool
-    pool_info = Vulkan::CommandPoolCreateInfo.new
-    pool_info.s_type = Vulkan::StructureType::VkStructureTypeCommandPoolCreateInfo
-    pool_info.queue_family_index = 0 # FIXME graphics_family_idx
-    pool_info.flags = 0
-
-    Mantle.create_command_pool(device, pool_info)
-  end
-
-  def create_vertex_buffer
-    info = Vulkan::BufferCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeBufferCreateInfo
-    info.size = VERTEX_COUNT * VERTEX_SIZE
-    info.usage = Vulkan::BufferUsageFlagBits::VkBufferUsageVertexBufferBit
-    info.sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
-
-    Mantle.create_buffer(device, info)
-  end
-
   def create_command_buffers
-    alloc_info = Vulkan::CommandBufferAllocateInfo.new
-
-    alloc_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferAllocateInfo
-    alloc_info.command_pool = command_pool
-    alloc_info.level = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
-    alloc_info.command_buffer_count = framebuffers.size
-
-    buffers = Mantle.allocate_command_buffers(device, alloc_info)
+    buffers = Mantle.allocate_command_buffers(device, command_pool, framebuffers.size)
 
     buffers.each_with_index do |buf, i|
-      begin_info = Vulkan::CommandBufferBeginInfo.new
-      begin_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferBeginInfo
-      begin_info.flags = Vulkan::CommandBufferUsageFlagBits::VkCommandBufferUsageSimultaneousUseBit
-      begin_info.p_inheritance_info = nil
+      Mantle.begin_command_buffer(buf, Vulkan::CommandBufferUsageFlagBits::VkCommandBufferUsageSimultaneousUseBit)
 
-      Mantle.begin_command_buffer(buf, begin_info)
-
-      offset = Vulkan::Offset2D.new
-
-      pass_begin = Vulkan::RenderPassBeginInfo.new
-      pass_begin.s_type = Vulkan::StructureType::VkStructureTypeRenderPassBeginInfo
-      pass_begin.render_pass = render_pass
-      pass_begin.framebuffer = framebuffers[i]
-      pass_begin.render_area.offset = offset
-      pass_begin.render_area.extent = swapchain.extent
-
-      color = Vulkan::ClearValue.new
-      # color.r = 0.0_f32
-      # color.g = 0.0_f32
-      # color.b = 0.0_f32
-      # color.a = 1.0_f32
-
-      pass_begin.clear_value_count = 1
-      pass_begin.p_clear_values = pointerof(color)
-
-      Vulkan.cmd_begin_render_pass(buf, pointerof(pass_begin), Vulkan::SubpassContents::VkSubpassContentsInline)
+      Mantle.cmd_begin_render_pass(buf, render_pass, framebuffers[i], swapchain.extent)
 
       Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline)
 
-      vertex_buffers = StaticArray[vertex_buffer]
-      offsets = StaticArray[0_u64]
-
-      Vulkan.cmd_bind_vertex_buffers(buf, 0, 1, vertex_buffers, offsets)
+      Mantle.cmd_bind_vertex_buffers(buf, 1, [vertex_buffer])
 
       Vulkan.cmd_draw(buf, VERTEX_COUNT, 1, 0, 0)
 
