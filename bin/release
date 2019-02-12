@@ -1,0 +1,28 @@
+#!/usr/bin/env crystal
+
+require "yaml"
+require "../src/kimberlite/version"
+
+def run(cmd, args = [] of String, msg = "Command failed: #{cmd} #{args.join(" ")}")
+  puts "Running: #{cmd} #{args.join(" ")}"
+
+  s = Process.run(
+    cmd,
+    args,
+    output: Process::Redirect::Inherit,
+    error: Process::Redirect::Inherit
+  )
+
+  abort(msg) unless s.success?
+end
+
+run("crystal", ["spec"])
+
+run("./bin/build")
+run("git", ["add", "-A"])
+
+version_name = "v#{Kimberlite::VERSION}"
+run("git", ["commit", "-m", "Version #{version_name}"])
+run("git", ["tag", version_name])
+run("git", ["push"])
+run("git", ["push", "origin", version_name])

@@ -178,7 +178,7 @@ module Kimberlite
         Fragment
       end
 
-      ShaderKindMap = {
+      SHADER_KIND_MAP = {
         ShaderKind::Vertex   => Vulkan::ShaderStageFlagBits::VkShaderStageVertexBit,
         ShaderKind::Fragment => Vulkan::ShaderStageFlagBits::VkShaderStageFragmentBit,
       }
@@ -187,7 +187,7 @@ module Kimberlite
         info = Vulkan::PipelineShaderStageCreateInfo.new
         info.s_type = Vulkan::StructureType::VkStructureTypePipelineShaderStageCreateInfo
 
-        info.stage = ShaderKindMap[kind]
+        info.stage = SHADER_KIND_MAP[kind]
 
         info.module = mod
         info.p_name = name
@@ -210,8 +210,17 @@ module Kimberlite
         layout
       end
 
-      def create_graphics_pipelines(device : Vulkan::Device, infos : Array(Vulkan::GraphicsPipelineCreateInfo), cache : Vulkan::PipelineCache? = nil, allocator : Vulkan::AllocationCallbacks? = nil)
-        pipeline = nil.as(Vulkan::Pipeline)
+      def create_graphics_pipeline(device : Vulkan::Device, info : Vulkan::GraphicsPipelineCreateInfo, **args)
+        create_graphics_pipelines(device, [info], **args).first
+      end
+
+      def create_graphics_pipelines(
+        device : Vulkan::Device,
+        infos : Array(Vulkan::GraphicsPipelineCreateInfo),
+        cache : Vulkan::PipelineCache? = nil,
+        allocator : Vulkan::AllocationCallbacks? = nil
+      )
+        pipelines = Array(Vulkan::Pipeline).new(infos.size) { nil.as(Vulkan::Pipeline) }
 
         res = Vulkan.create_graphics_pipelines(
           device,
@@ -219,12 +228,12 @@ module Kimberlite
           infos.size,
           infos.to_unsafe,
           allocator,
-          pointerof(pipeline)
+          pipelines.to_unsafe
         )
 
         assert_success(res)
 
-        pipeline
+        pipelines
       end
 
       def create_framebuffer(device : Vulkan::Device, fb_info : Vulkan::FramebufferCreateInfo, allocator : Vulkan::AllocationCallbacks? = nil)
@@ -243,6 +252,15 @@ module Kimberlite
         assert_success(res)
 
         command_pool
+      end
+
+      def create_buffer(device : Vulkan::Device, info : Vulkan::BufferCreateInfo)
+        buffer = nil.as(Vulkan::Buffer)
+        res = Vulkan.create_buffer(device, pointerof(info), nil, pointerof(buffer))
+
+        assert_success(res)
+
+        buffer
       end
 
       def create_render_pass(device : Vulkan::Device, pass_info : Vulkan::RenderPassCreateInfo, allocator : Vulkan::AllocationCallbacks? = nil)
@@ -295,6 +313,54 @@ module Kimberlite
         res = Vulkan.queue_submit(graphics_queue, infos.size, infos.to_unsafe, fence)
         assert_success(res)
       end
-    end
+
+      def get_buffer_memory_requirements(device : Vulkan::Device, buffer : Vulkan::Buffer)
+        req = Vulkan::MemoryRequirements.new
+        Vulkan.get_buffer_memory_requirements(device, buffer, pointerof(req))
+
+        req
+      end
+
+      def get_physical_device_memory_properties(device : Vulkan::PhysicalDevice)
+        props = Vulkan::PhysicalDeviceMemoryProperties.new
+        Vulkan.get_physical_device_memory_properties(device, pointerof(props))
+
+        props
+      end
+
+      def allocate_memory(device : Vulkan::Device, info : Vulkan::MemoryAllocateInfo)
+        memory = nil.as(Vulkan::DeviceMemory)
+
+        # info = Vulkan::MemoryAllocateInfo.new
+        # info.s_type = Vulkan::StructureType::VkStructureTypeMemoryAllocateInfo
+        # info.allocation_size = req.size
+        # info.memory_type_index = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+
+        res = Vulkan.allocate_memory(device, pointerof(info), nil, pointerof(memory))
+
+        assert_success(res)
+
+        memory
+      end
+
+      def bind_buffer_memory(device : Vulkan::Device, buffer : Vulkan::Buffer, memory : Vulkan::DeviceMemory)
+        res = Vulkan.bind_buffer_memory(device, buffer, memory, 0)
+
+        assert_success(res)
+      end
+
+      def map_memory(device : Vulkan::Device,
+                     memory : Vulkan::DeviceMemory,
+                     size : UInt64,
+                     offset : UInt64 = 0) : Void*
+        ptr = nil.as(Void*)
+
+        res = Vulkan.map_memory(device, memory, offset, size, 0, pointerof(ptr))
+
+        assert_success(res)
+
+        ptr
+      end
+    end # Wrappers
   end
 end

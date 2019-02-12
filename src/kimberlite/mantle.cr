@@ -1,8 +1,10 @@
 require "./libvulkan"
+require "./mantle/lib_extensions"
 require "./mantle/wrappers"
 require "./mantle/shortcuts"
 require "./mantle/extensions"
 require "./mantle/debug"
+require "./mantle/pipeline_builder"
 
 module Kimberlite
   # A thin layer wrapping the raw vulkan library.

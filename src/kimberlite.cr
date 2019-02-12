@@ -1,3 +1,4 @@
+require "./kimberlite/version"
+
 module Kimberlite
-  VERSION = "0.1.0"
 end

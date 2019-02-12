@@ -1,7 +1,6 @@
 require "lib_glfw"
 require "../../src/kimberlite/mantle"
 require "../../src/kimberlite/mantle/swapchain"
-require "../../src/kimberlite/mantle/pipeline"
 
 class App
   include Kimberlite
@@ -23,7 +22,6 @@ class App
   getter! surface : Vulkan::SurfaceKhr
   getter! window : Pointer(LibGLFW::Window)
 
-  # getter swapchain_support : Mantle::SwapChainSupport = Mantle::SwapChainSupport.new
   getter! swapchain : Mantle::Swapchain
 
   getter framebuffers : Array(Vulkan::Framebuffer) = [] of Vulkan::Framebuffer
@@ -31,7 +29,8 @@ class App
   getter! vertex_shader : Vulkan::ShaderModule
   getter! fragment_shader : Vulkan::ShaderModule
 
-  getter! pipeline : Mantle::Pipeline
+  getter! pipeline : Vulkan::Pipeline
+  getter! pipeline_layout : Vulkan::PipelineLayout
 
   getter render_pass : Vulkan::RenderPass = nil.as(Vulkan::RenderPass)
 
@@ -40,6 +39,18 @@ class App
 
   getter! image_available_semaphore : Vulkan::Semaphore
   getter! render_finished_semaphore : Vulkan::Semaphore
+
+  getter vertex_buffer_memory : Vulkan::DeviceMemory = nil.as(Vulkan::DeviceMemory)
+  getter vertex_buffer : Vulkan::Buffer = nil.as(Vulkan::Buffer)
+
+  VERTICES = StaticArray[
+    0.0f32, -0.5f32, 1.0f32, 1.0f32, 0.0f32,
+    0.5f32, 0.5f32, 0.0f32, 1.0f32, 1.0f32,
+    -0.5f32, 0.5f32, 1.0f32, 0.0f32, 1.0f32,
+  ]
+
+  VERTEX_COUNT = VERTICES.size / 5
+  VERTEX_SIZE  = (VERTICES.size / VERTEX_COUNT) * 4 # bytes
 
   def initialize
     LibGLFW.init
@@ -55,7 +66,7 @@ class App
 
     layers = ["VK_LAYER_LUNARG_standard_validation"]
 
-    @instance = Mantle.create_instance("App", "Engine", extensions, layers)
+    @instance = Mantle.create_instance(extensions: extensions, layers: layers)
 
     # -------------------- debug callback
 
@@ -76,22 +87,39 @@ class App
 
     LibGLFW.create_window_surface(glfw_inst, window, nil, glfw_surf)
 
-    select_physical_device
+    @physical_device = select_physical_device
     create_logical_device
-    create_swapchain
-    create_render_pass
-    create_pipeline
-    create_framebuffers
-    create_command_pool
-    create_command_buffers
+    @swapchain = create_swapchain
+    @render_pass = create_render_pass
+    @vertex_shader, @fragment_shader = create_shaders
+    @pipeline, @pipeline_layout = create_pipeline
+    @framebuffers = create_framebuffers
+    @command_pool = create_command_pool
 
-    @image_available_semaphore = create_semaphore
-    @render_finished_semaphore = create_semaphore
+    @vertex_buffer = create_vertex_buffer
+    @vertex_buffer_memory = Mantle.allocate_buffer_memory(device, physical_device, vertex_buffer)
+
+    Mantle.copy_memory(
+      device,
+      vertex_buffer_memory,
+      (VERTEX_COUNT * VERTEX_SIZE).to_u64,
+      VERTICES.to_unsafe.as(Void*)
+    )
+
+    @command_buffers = create_command_buffers
+
+    @image_available_semaphore = Mantle.create_semaphore(device)
+    @render_finished_semaphore = Mantle.create_semaphore(device)
   end
 
   def create_logical_device
     idx = Mantle.get_single_graphics_queue_index(physical_device, surface)
-    @device, queue_hash = Mantle.create_logical_device(physical_device, {idx => [1.0_f32]}, ["VK_KHR_swapchain"], ["VK_LAYER_LUNARG_standard_validation"])
+    @device, queue_hash = Mantle.create_logical_device(
+      physical_device,
+      {idx => [1.0_f32]},
+      ["VK_KHR_swapchain"],
+      ["VK_LAYER_LUNARG_standard_validation"]
+    )
 
     @graphics_queue = queue_hash[idx].first
     @present_queue = graphics_queue
@@ -100,23 +128,84 @@ class App
   def select_physical_device
     devices = Mantle.enumerate_physical_devices(instance)
 
-    @physical_device = devices.first
+    devices.first
+  end
+
+  record(Vec2, x : Float32, y : Float32)
+  record(Vec3, x : Float32, y : Float32, z : Float32)
+  record(Vertex, pos : Vec2, color : Vec3)
+
+  def build_vertex_input_description
+    desc = Vulkan::VertexInputBindingDescription.new
+    desc.binding = 0
+    desc.stride = VERTEX_SIZE
+    desc.input_rate = Vulkan::VertexInputRate::VkVertexInputRateVertex
+
+    desc
+  end
+
+  def build_vertex_attribute_desciptions
+    atts = [] of Vulkan::VertexInputAttributeDescription
+
+    att = Vulkan::VertexInputAttributeDescription.new
+    att.binding = 0
+    att.location = 0
+    att.format = Vulkan::Format::VkFormatR32G32Sfloat
+    att.offset = 0 # offsetof(Vertex, pos)
+
+    atts << att
+
+    att = Vulkan::VertexInputAttributeDescription.new
+    att.binding = 0
+    att.location = 1
+    att.format = Vulkan::Format::VkFormatR32G32B32Sfloat
+    att.offset = 2*4 # offsetof(Vertex, color);
+
+    atts << att
+
+    atts
+  end
+
+  def create_shaders
+    {
+      Mantle.create_shader_module(device, File.read("./examples/mantle/vert.spv")),
+      Mantle.create_shader_module(device, File.read("./examples/mantle/frag.spv")),
+    }
   end
 
   def create_pipeline
-    @vertex_shader = Mantle.create_shader_module(device, File.read("./examples/basic/vert.spv"))
-    @fragment_shader = Mantle.create_shader_module(device, File.read("./examples/basic/frag.spv"))
+    b = Mantle::PipelineBuilder.new
 
-    shader_usages = [
-      Mantle::Pipeline::ShaderUsage.new(vertex_shader, "main", Mantle::Pipeline::ShaderStage::Vertex),
-      Mantle::Pipeline::ShaderUsage.new(fragment_shader, "main", Mantle::Pipeline::ShaderStage::Fragment),
-    ]
+    b.scissors <<
+      Vulkan::Rect2D.new(
+        Vulkan::Offset2D.new(0, 0),
+        Vulkan::Extent2D.new(swapchain.extent.width, swapchain.extent.height)
+      )
 
-    @pipeline = Mantle::Pipeline.new(device, swapchain.extent, render_pass, shader_usages)
+    b.viewports << Vulkan::Viewport.new(swapchain.extent.width, swapchain.extent.height)
+
+    b.shader_modules << {Vulkan::ShaderStageFlagBits::VkShaderStageVertexBit, vertex_shader}
+    b.shader_modules << {Vulkan::ShaderStageFlagBits::VkShaderStageFragmentBit, fragment_shader}
+
+    input_desc = build_vertex_input_description
+    atts = build_vertex_attribute_desciptions
+
+    vertex_info = Vulkan::PipelineVertexInputStateCreateInfo.new
+    vertex_info.s_type = Vulkan::StructureType::VkStructureTypePipelineVertexInputStateCreateInfo
+    vertex_info.vertex_binding_description_count = 1
+    vertex_info.p_vertex_binding_descriptions = pointerof(input_desc)
+    vertex_info.vertex_attribute_description_count = atts.size
+    vertex_info.p_vertex_attribute_descriptions = atts.to_unsafe
+
+    b.vertex_info = vertex_info
+
+    b.attachments << b.default_color_blend_attachment
+
+    b.build(device, render_pass)
   end
 
   def create_framebuffers
-    @framebuffers = swapchain.views.map do |view|
+    swapchain.views.map do |view|
       attachments = [view]
 
       fb_info = Vulkan::FramebufferCreateInfo.new
@@ -128,13 +217,7 @@ class App
       fb_info.height = swapchain.extent.height
       fb_info.layers = 1
 
-      fb = nil.as(Vulkan::Framebuffer)
-
-      res = Vulkan.create_framebuffer(device, pointerof(fb_info), nil, pointerof(fb))
-
-      Mantle.assert_success(res)
-
-      fb
+      Mantle.create_framebuffer(device, fb_info)
     end
   end
 
@@ -144,34 +227,36 @@ class App
     pool_info.queue_family_index = 0 # FIXME graphics_family_idx
     pool_info.flags = 0
 
-    if Vulkan.create_command_pool(device, pointerof(pool_info), nil, pointerof(@command_pool)) != Vulkan::Result::VkSuccess
-      raise("failed to create command pool")
-    end
+    Mantle.create_command_pool(device, pool_info)
+  end
+
+  def create_vertex_buffer
+    info = Vulkan::BufferCreateInfo.new
+    info.s_type = Vulkan::StructureType::VkStructureTypeBufferCreateInfo
+    info.size = VERTEX_COUNT * VERTEX_SIZE
+    info.usage = Vulkan::BufferUsageFlagBits::VkBufferUsageVertexBufferBit
+    info.sharing_mode = Vulkan::SharingMode::VkSharingModeExclusive
+
+    Mantle.create_buffer(device, info)
   end
 
   def create_command_buffers
-    @command_buffers = Array(Vulkan::CommandBuffer).new(framebuffers.size) { nil.as(Vulkan::CommandBuffer) }
-
     alloc_info = Vulkan::CommandBufferAllocateInfo.new
 
     alloc_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferAllocateInfo
     alloc_info.command_pool = command_pool
     alloc_info.level = Vulkan::CommandBufferLevel::VkCommandBufferLevelPrimary
-    alloc_info.command_buffer_count = command_buffers.size
+    alloc_info.command_buffer_count = framebuffers.size
 
-    if Vulkan.allocate_command_buffers(device, pointerof(alloc_info), command_buffers.to_unsafe) != Vulkan::Result::VkSuccess
-      raise("failed to allocate command buffers")
-    end
+    buffers = Mantle.allocate_command_buffers(device, alloc_info)
 
-    command_buffers.each_with_index do |buf, i|
+    buffers.each_with_index do |buf, i|
       begin_info = Vulkan::CommandBufferBeginInfo.new
       begin_info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferBeginInfo
       begin_info.flags = Vulkan::CommandBufferUsageFlagBits::VkCommandBufferUsageSimultaneousUseBit
       begin_info.p_inheritance_info = nil
 
-      if Vulkan.begin_command_buffer(buf, pointerof(begin_info)) != Vulkan::Result::VkSuccess
-        raise("failed to begin recording command buffer")
-      end
+      Mantle.begin_command_buffer(buf, begin_info)
 
       offset = Vulkan::Offset2D.new
 
@@ -193,16 +278,21 @@ class App
 
       Vulkan.cmd_begin_render_pass(buf, pointerof(pass_begin), Vulkan::SubpassContents::VkSubpassContentsInline)
 
-      Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline.pipeline)
+      Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline)
 
-      Vulkan.cmd_draw(buf, 3, 1, 0, 0)
+      vertex_buffers = StaticArray[vertex_buffer]
+      offsets = StaticArray[0_u64]
+
+      Vulkan.cmd_bind_vertex_buffers(buf, 0, 1, vertex_buffers, offsets)
+
+      Vulkan.cmd_draw(buf, VERTEX_COUNT, 1, 0, 0)
 
       Vulkan.cmd_end_render_pass(buf)
 
-      if Vulkan.end_command_buffer(buf) != Vulkan::Result::VkSuccess
-        raise("failed to record command buffer")
-      end
+      Mantle.end_command_buffer(buf)
     end
+
+    buffers
   end
 
   def create_swapchain
@@ -227,7 +317,7 @@ class App
 
     mode = swapchain_support.present_modes.first
 
-    @swapchain = Mantle::Swapchain.standard_swapchain(device, physical_device, surface, format, extent, mode)
+    Mantle::Swapchain.standard_swapchain(device, physical_device, surface, format, extent, mode)
   end
 
   def run
@@ -262,9 +352,7 @@ class App
     submit_info.signal_semaphore_count = 1
     submit_info.p_signal_semaphores = signal_semaphores
 
-    if Vulkan.queue_submit(graphics_queue, 1, pointerof(submit_info), nil) != Vulkan::Result::VkSuccess
-      raise("failed to submit draw command buffer")
-    end
+    Mantle.queue_submit(graphics_queue, [submit_info])
 
     present_info = Vulkan::PresentInfoKhr.new
     present_info.s_type = Vulkan::StructureType::VkStructureTypePresentInfoKhr
@@ -321,22 +409,7 @@ class App
     pass_info.dependency_count = 1
     pass_info.p_dependencies = pointerof(dependency)
 
-    if Vulkan.create_render_pass(device, pointerof(pass_info), nil, pointerof(@render_pass)) != Vulkan::Result::VkSuccess
-      raise("failed to create render pass")
-    end
-  end
-
-  def create_semaphore
-    sem = nil.as(Vulkan::Semaphore)
-
-    info = Vulkan::SemaphoreCreateInfo.new
-    info.s_type = Vulkan::StructureType::VkStructureTypeSemaphoreCreateInfo
-
-    if Vulkan.create_semaphore(device, pointerof(info), nil, pointerof(sem)) != Vulkan::Result::VkSuccess
-      raise("Semaphore creation failed")
-    end
-
-    sem
+    Mantle.create_render_pass(device, pass_info)
   end
 
   def destroy
@@ -354,11 +427,15 @@ class App
     Vulkan.destroy_shader_module(device, vertex_shader, nil)
     Vulkan.destroy_shader_module(device, fragment_shader, nil)
 
-    pipeline.destroy
+    Vulkan.destroy_pipeline(device, pipeline, nil)
+    Vulkan.destroy_pipeline_layout(device, pipeline_layout, nil)
 
     Vulkan.destroy_render_pass(device, render_pass, nil)
 
     swapchain.destroy
+
+    Vulkan.destroy_buffer(device, vertex_buffer, nil)
+    Vulkan.free_memory(device, vertex_buffer_memory, nil)
 
     Vulkan.destroy_surface_khr(instance, surface, nil)
     Vulkan.destroy_device(device, nil)

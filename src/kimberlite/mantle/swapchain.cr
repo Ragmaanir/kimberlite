@@ -34,30 +34,31 @@ module Kimberlite
 
         @images = Mantle.get_swapchain_images(device, object)
 
-        @views = Array(Vulkan::ImageView).new(images.size) { nil.as(Vulkan::ImageView) }
+        # @views = Array(Vulkan::ImageView).new(images.size) { nil.as(Vulkan::ImageView) }
 
-        images.each_with_index do |image, i|
-          info = Vulkan::ImageViewCreateInfo.new
-          info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
-          info.image = image
-          info.view_type = Vulkan::ImageViewType::VkImageViewType2D
-          info.format = format
-          info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-          info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-          info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-          info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
-          info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
-          info.subresource_range.base_mip_level = 0
-          info.subresource_range.level_count = 1
-          info.subresource_range.base_array_layer = 0
-          info.subresource_range.layer_count = 1
+        # images.each_with_index do |image, i|
+        #   info = Vulkan::ImageViewCreateInfo.new
+        #   info.s_type = Vulkan::StructureType::VkStructureTypeImageViewCreateInfo
+        #   info.image = image
+        #   info.view_type = Vulkan::ImageViewType::VkImageViewType2D
+        #   info.format = format
+        #   info.components.r = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+        #   info.components.g = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+        #   info.components.b = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+        #   info.components.a = Vulkan::ComponentSwizzle::VkComponentSwizzleIdentity
+        #   info.subresource_range.aspect_mask = Vulkan::ImageAspectFlagBits::VkImageAspectColorBit
+        #   info.subresource_range.base_mip_level = 0
+        #   info.subresource_range.level_count = 1
+        #   info.subresource_range.base_array_layer = 0
+        #   info.subresource_range.layer_count = 1
 
-          view = nil.as(Vulkan::ImageView)
+        #   views[i] = Mantle.create_image_view(device, info)
+        # end
 
-          res = Vulkan.create_image_view(device, pointerof(info), nil, pointerof(view))
-          Mantle.assert_success(res)
+        @views = images.map do |image|
+          info = Mantle.build_image_view_create_info(image, format)
 
-          views[i] = view
+          Mantle.create_image_view(device, info)
         end
       end
 

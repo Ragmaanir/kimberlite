@@ -1,6 +1,6 @@
 # kimberlite [![Build Status](https://travis-ci.org/Ragmaanir/kimberlite.svg?branch=master)](https://travis-ci.org/Ragmaanir/kimberlite)[![Dependency Status](https://shards.rocks/badge/github/ragmaanir/kimberlite/status.svg)](https://shards.rocks/github/ragmaanir/kimberlite)
 
-### Version 0.1.0
+### Version <%= Kimberlite::VERSION %>
 
 Vulkan bindings for crystal.
 

@@ -4,9 +4,9 @@ module Kimberlite
     # provide some simple commonly used default implementations.
     module Shortcuts
       def create_instance(
-        app_name : String? = nil,
+        app_name : String = "Unnamed Application",
         app_version : Int32 = Mantle.version(1, 0, 0),
-        engine_name : String? = nil,
+        engine_name : String = "Unnamed Engine",
         engine_version : Int32 = Mantle.version(1, 0, 0),
         api_version : Int32 = Mantle.version(1, 0, 0),
         extensions : Array(String) = [] of String,
@@ -99,7 +99,7 @@ module Kimberlite
         {logical_device, queues}
       end
 
-      def create_swapchain_extent(width : UInt32, height : UInt32, caps : Vulkan::SurfaceCapabilitiesKhr)
+      def pick_swapchain_extent(width : UInt32, height : UInt32, caps : Vulkan::SurfaceCapabilitiesKhr)
         if caps.current_extent.width == UInt32::MAX
           ext = Vulkan::Extent2D.new
 
@@ -204,6 +204,44 @@ module Kimberlite
 
         info
       end
-    end
-  end
+
+      def find_matching_memory_type_index(physical_device : Vulkan::PhysicalDevice, req : Vulkan::MemoryRequirements, properties : Int32)
+        props = get_physical_device_memory_properties(physical_device)
+
+        req.memory_type_indices.find do |i|
+          t = props.memory_types[i]
+          t.property_flags & properties == properties &&
+            props.memory_heaps[t.heap_index].size >= req.size
+        end || raise("Could not find a matching memory type to allocate memory in")
+      end
+
+      def allocate_memory(device : Vulkan::Device, physical_device : Vulkan::PhysicalDevice, req : Vulkan::MemoryRequirements, properties : Int32? = nil)
+        properties ||= Vulkan::MemoryPropertyFlagBits::VkMemoryPropertyHostVisibleBit.value |
+                       Vulkan::MemoryPropertyFlagBits::VkMemoryPropertyHostCoherentBit.value
+
+        info = Vulkan::MemoryAllocateInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeMemoryAllocateInfo
+        info.allocation_size = req.size
+        info.memory_type_index = find_matching_memory_type_index(physical_device, req, properties)
+
+        Mantle.allocate_memory(device, info)
+      end
+
+      def allocate_buffer_memory(device : Vulkan::Device, physical_device : Vulkan::PhysicalDevice, buffer : Vulkan::Buffer)
+        req = get_buffer_memory_requirements(device, buffer)
+
+        memory = allocate_memory(device, physical_device, req)
+
+        Mantle.bind_buffer_memory(device, buffer, memory)
+
+        memory
+      end
+
+      def copy_memory(device : Vulkan::Device, memory : Vulkan::DeviceMemory, size : UInt64, buffer : Void*)
+        data = Mantle.map_memory(device, memory, size)
+        Intrinsics.memcpy(data, buffer, size, 0_u64, false)
+        Vulkan.unmap_memory(device, memory)
+      end
+    end # Shortcuts
+  end   # Mantle
 end
