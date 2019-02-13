@@ -244,6 +244,16 @@ module Kimberlite
         create_buffer(device, info)
       end
 
+      def create_index_buffer(device : Vulkan::Device, size : UInt64, sharing_mode : Vulkan::SharingMode = Vulkan::SharingMode::VkSharingModeExclusive)
+        info = Vulkan::BufferCreateInfo.new
+        info.s_type = Vulkan::StructureType::VkStructureTypeBufferCreateInfo
+        info.size = size
+        info.usage = Vulkan::BufferUsageFlagBits::VkBufferUsageIndexBufferBit
+        info.sharing_mode = sharing_mode
+
+        create_buffer(device, info)
+      end
+
       def begin_command_buffer(buffer : Vulkan::CommandBuffer, flags : Vulkan::CommandBufferUsageFlagBits)
         info = Vulkan::CommandBufferBeginInfo.new
         info.s_type = Vulkan::StructureType::VkStructureTypeCommandBufferBeginInfo

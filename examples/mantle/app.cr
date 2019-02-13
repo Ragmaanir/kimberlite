@@ -45,14 +45,20 @@ class App
   getter vertex_buffer_memory : Vulkan::DeviceMemory = nil.as(Vulkan::DeviceMemory)
   getter vertex_buffer : Vulkan::Buffer = nil.as(Vulkan::Buffer)
 
+  getter index_buffer_memory : Vulkan::DeviceMemory = nil.as(Vulkan::DeviceMemory)
+  getter index_buffer : Vulkan::Buffer = nil.as(Vulkan::Buffer)
+
   VERTICES = StaticArray[
-    0.0f32, -0.5f32, 1.0f32, 1.0f32, 0.0f32,
-    0.5f32, 0.5f32, 0.0f32, 1.0f32, 1.0f32,
-    -0.5f32, 0.5f32, 1.0f32, 0.0f32, 1.0f32,
-  ]
+    -0.5, -0.5, 1.0, 0.0, 0.0,
+    0.5, -0.5, 0.0, 1.0, 0.0,
+    0.5, 0.5, 0.0, 0.0, 1.0,
+    -0.5, 0.5, 1.0, 1.0, 1.0,
+  ].map(&.to_f32)
 
   VERTEX_COUNT = (VERTICES.size / 5).to_u64
   VERTEX_SIZE  = (VERTICES.size / VERTEX_COUNT) * 4_u64 # bytes
+
+  INDICES = [0, 1, 2, 2, 3, 0].map(&.to_u16)
 
   def initialize
     LibGLFW.init
@@ -106,6 +112,16 @@ class App
       vertex_buffer_memory,
       VERTEX_COUNT * VERTEX_SIZE,
       VERTICES.to_unsafe.as(Void*)
+    )
+
+    @index_buffer = Mantle.create_index_buffer(device, INDICES.size.to_u64 * 2)
+    @index_buffer_memory = Mantle.allocate_buffer_memory(device, physical_device, index_buffer)
+
+    Mantle.copy_memory(
+      device,
+      index_buffer_memory,
+      INDICES.size.to_u64 * 2,
+      INDICES.to_unsafe.as(Void*)
     )
 
     @command_buffers = create_command_buffers
@@ -223,9 +239,15 @@ class App
 
       Vulkan.cmd_bind_pipeline(buf, Vulkan::PipelineBindPoint::VkPipelineBindPointGraphics, pipeline)
 
+      # Mantle.cmd_bind_vertex_buffers(buf, 1, [vertex_buffer])
+
       Mantle.cmd_bind_vertex_buffers(buf, 1, [vertex_buffer])
 
-      Vulkan.cmd_draw(buf, VERTEX_COUNT, 1, 0, 0)
+      Vulkan.cmd_bind_index_buffer(buf, index_buffer, 0, Vulkan::IndexType::VkIndexTypeUint16)
+
+      # Vulkan.cmd_draw(buf, VERTEX_COUNT, 1, 0, 0)
+
+      Vulkan.cmd_draw_indexed(buf, INDICES.size, 1, 0, 0, 0)
 
       Vulkan.cmd_end_render_pass(buf)
 
@@ -373,6 +395,9 @@ class App
     Vulkan.destroy_render_pass(device, render_pass, nil)
 
     swapchain.destroy
+
+    Vulkan.destroy_buffer(device, index_buffer, nil)
+    Vulkan.free_memory(device, index_buffer_memory, nil)
 
     Vulkan.destroy_buffer(device, vertex_buffer, nil)
     Vulkan.free_memory(device, vertex_buffer_memory, nil)
